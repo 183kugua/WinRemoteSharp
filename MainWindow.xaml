@@ -1,0 +1,722 @@
+<Window x:Class="WinRemoteSharp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WinRemote 远程控制代理 V1.2"
+        Height="760" Width="1080"
+        MinHeight="640" MinWidth="960"
+        Background="{StaticResource BgPrimary}"
+        Foreground="{StaticResource FgPrimary}"
+        FontFamily="{StaticResource UiFont}"
+        WindowStartupLocation="CenterScreen"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <!-- 状态灯颜色 -->
+        <Color x:Key="StatusGreen">#FF2ECC71</Color>
+        <Color x:Key="StatusRed">#FFE04848</Color>
+        <Color x:Key="StatusYellow">#FFF5A623</Color>
+        <Color x:Key="StatusBlue">#FF4AAED0</Color>
+
+        <!-- 状态指示灯模板 -->
+        <Style x:Key="StatusDot" TargetType="Ellipse">
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="Stroke" Value="#88FFFFFF"/>
+            <Setter Property="StrokeThickness" Value="1"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="0" BlurRadius="6" Opacity="0.5"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 小徽章 -->
+        <Style x:Key="Tag" TargetType="Border">
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="Background" Value="{StaticResource MintLight}"/>
+        </Style>
+
+        <Style x:Key="TagText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource MintDark}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- 链接文字 -->
+        <Style x:Key="LinkText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource FgLink}"/>
+            <Setter Property="TextDecorations" Value="Underline"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="11.5"/>
+        </Style>
+
+        <!-- 卡片小标题 -->
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource MintDark}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <!-- 描述文字 -->
+        <Style x:Key="DescText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource FgMuted}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <!-- 标签文字 -->
+        <Style x:Key="LabelText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource FgSecondary}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <!-- 整体布局：顶栏 + 内容 + 底栏 -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>   <!-- 顶栏 -->
+            <RowDefinition Height="*"/>      <!-- 主内容 -->
+            <RowDefinition Height="Auto"/>   <!-- 底栏 -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== 顶栏：薄荷绿渐变 ===== -->
+        <Border Grid.Row="0" Style="{StaticResource HeaderBar}" Height="62">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="{StaticResource MintMain}" Offset="0"/>
+                    <GradientStop Color="{StaticResource SkyDeep}" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid Margin="20,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo + 标题 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="36" Height="36" CornerRadius="10"
+                            Background="#22FFFFFF" VerticalAlignment="Center">
+                        <TextBlock Text="🛡" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="WinRemote 远程控制代理"
+                                   Foreground="{StaticResource FgOnMint}"
+                                   FontSize="16" FontWeight="Bold"/>
+                        <TextBlock Text="V1.2 薄荷清新版"
+                                   Foreground="#DDFFFFFF"
+                                   FontSize="11"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- 中间状态 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Ellipse x:Name="AgentStatusDot"
+                             Style="{StaticResource StatusDot}"
+                             Fill="#FFE04848"/>
+                    <TextBlock x:Name="AgentStatusText"
+                               Text="Agent 已停止"
+                               Foreground="{StaticResource FgOnMint}"
+                               FontSize="13" FontWeight="SemiBold"
+                               Margin="8,0,0,0"/>
+                    <Border Width="1" Height="20" Background="#44FFFFFF" Margin="16,0"/>
+
+                    <Ellipse x:Name="ServiceStatusDot"
+                             Style="{StaticResource StatusDot}"
+                             Fill="#FFE04848"/>
+                    <TextBlock x:Name="ServiceStatusText"
+                               Text="服务: 未知"
+                               Foreground="{StaticResource FgOnMint}"
+                               FontSize="13" FontWeight="SemiBold"
+                               Margin="8,0,0,0"/>
+                </StackPanel>
+
+                <!-- 右侧按钮 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnMinimize" Content="—" Width="32" Height="28"
+                            Background="Transparent" Foreground="{StaticResource FgOnMint}"
+                            BorderThickness="0" FontSize="14" Cursor="Hand"
+                            Click="BtnMinimize_Click"/>
+                    <Button x:Name="BtnClose" Content="✕" Width="32" Height="28"
+                            Background="Transparent" Foreground="{StaticResource FgOnMint}"
+                            BorderThickness="0" FontSize="14" Cursor="Hand"
+                            Margin="4,0,0,0" Click="BtnClose_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== 主内容：TabControl ===== -->
+        <TabControl Grid.Row="1" Margin="0" Padding="0">
+
+            <!-- ========== 主控台 ========== -->
+            <TabItem Header="🏠 主控台">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+                        <!-- 启动控制卡片 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="🚀 启动控制" Style="{StaticResource CardTitle}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="BtnStartAgent" Content="▶ 启动 Agent"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Width="160" Height="38"
+                                            Click="BtnStartAgent_Click"/>
+                                    <Button x:Name="BtnStopAgent" Content="■ 停止 Agent"
+                                            Style="{StaticResource DangerButton}"
+                                            Width="160" Height="38" Margin="12,0,0,0"
+                                            Click="BtnStopAgent_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 连接信息卡片 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="🔗 连接信息" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="服务器:" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="TxtServer" Text="ws://127.0.0.1:6190/winremote"
+                                             Margin="0,2,0,6" IsReadOnly="True"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="认证令牌:" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="TxtToken" Text="(未设置)"
+                                             Margin="0,2,0,6" IsReadOnly="True"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Agent 标识:" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="TxtAgentId" Text="(未设置)"
+                                             Margin="0,2,0,6" IsReadOnly="True"/>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="连接状态:" Style="{StaticResource LabelText}"/>
+                                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse x:Name="ConnDot" Width="12" Height="12"
+                                                 Fill="{StaticResource AccentCoral}" Stroke="#88FFFFFF" StrokeThickness="1"/>
+                                        <TextBlock x:Name="TxtConnStatus" Text="未连接"
+                                                   Foreground="{StaticResource FgSecondary}"
+                                                   FontSize="12.5" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 快速测试卡片 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="⚡ 快速测试" Style="{StaticResource CardTitle}"/>
+                                <StackPanel Orientation="Horizontal" WrapPanel.IsItemsHost="True">
+                                    <Button x:Name="BtnTestConn" Content="🔌 测试连接"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="130" Height="34" Margin="0,0,8,0"
+                                            Click="BtnTestConn_Click"/>
+                                    <Button x:Name="BtnQuickIp" Content="🌐 查 IP"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="110" Height="34" Margin="0,0,8,0"
+                                            Click="BtnQuickIp_Click"/>
+                                    <Button x:Name="BtnQuickProcess" Content="📊 查进程"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="110" Height="34" Margin="0,0,8,0"
+                                            Click="BtnQuickProcess_Click"/>
+                                    <Button x:Name="BtnQuickScreenshot" Content="📸 截图"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="110" Height="34"
+                                            Click="BtnQuickScreenshot_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 实时日志卡片 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="📋 实时日志" Style="{StaticResource CardTitle}" Margin="0"/>
+                                    <Button Grid.Column="1" x:Name="BtnClearLog"
+                                            Content="🗑 清空" Style="{StaticResource GhostButton}"
+                                            Width="80" Height="28"
+                                            Click="BtnClearLog_Click"/>
+                                </Grid>
+                                <Border Background="{StaticResource BgLog}"
+                                        BorderBrush="{StaticResource BorderSoft}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Height="220">
+                                    <ScrollViewer x:Name="LogScroller" VerticalScrollBarVisibility="Auto">
+                                        <TextBox x:Name="TxtLog" IsReadOnly="True"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 FontFamily="Consolas" FontSize="11.5"
+                                                 Foreground="{StaticResource FgPrimary}"
+                                                 TextWrapping="Wrap"
+                                                 Padding="10"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ========== 设置 ========== -->
+            <TabItem Header="⚙️ 设置">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+                        <!-- 服务器配置 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="🌐 服务器配置" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="服务器地址:" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="CfgServer" Margin="0,2,0,6"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="认证令牌:" Style="{StaticResource LabelText}"/>
+                                    <Grid Grid.Row="1" Grid.Column="1" Margin="0,2,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <PasswordBox Grid.Column="0" x:Name="CfgToken"/>
+                                        <Button Grid.Column="1" x:Name="BtnGenToken"
+                                                Content="🎲 随机生成"
+                                                Style="{StaticResource GhostButton}"
+                                                Width="110" Height="28" Margin="8,0,0,0"
+                                                Click="BtnGenToken_Click"/>
+                                    </Grid>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Agent 标识:" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="CfgAgentId" Margin="0,2,0,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Agent 配置 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="⚡ Agent 配置" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="心跳间隔(秒):" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="CfgHeartbeat" Margin="0,2,0,6"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="命令超时(秒):" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="CfgTimeout" Margin="0,2,0,6"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="截图格式:" Style="{StaticResource LabelText}"/>
+                                    <ComboBox Grid.Row="2" Grid.Column="1" x:Name="CfgScreenshotFmt" Margin="0,2,0,6">
+                                        <ComboBoxItem Content="PNG"/>
+                                        <ComboBoxItem Content="JPEG"/>
+                                        <ComboBoxItem Content="BMP"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="截图质量(1-100):" Style="{StaticResource LabelText}"/>
+                                    <TextBox Grid.Row="3" Grid.Column="1" x:Name="CfgScreenshotQuality" Margin="0,2,0,0"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 安全选项 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="🔒 安全选项" Style="{StaticResource CardTitle}"/>
+                                <CheckBox x:Name="CfgEnableInput" Content="🖱 启用键盘/鼠标模拟（需要时再开）"/>
+                                <CheckBox x:Name="CfgEnableWrite" Content="⚠️ 启用文件写入（高风险，仅受信任环境开启）" Margin="0,4,0,4"/>
+                                <TextBlock Text="📂 文件读取白名单（每行一个目录）" Style="{StaticResource LabelText}" Margin="0,8,0,4"/>
+                                <TextBox x:Name="CfgReadWhitelist" Height="60" TextWrapping="Wrap" AcceptsReturn="True"/>
+                                <TextBlock Text="🚫 文件写入黑名单（每行一个关键词）" Style="{StaticResource LabelText}" Margin="0,8,0,4"/>
+                                <TextBox x:Name="CfgWriteBlacklist" Height="50" TextWrapping="Wrap" AcceptsReturn="True"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 保存/恢复 -->
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="BtnSaveSettings" Content="💾 保存设置"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Width="160" Height="38"
+                                    Click="BtnSaveSettings_Click"/>
+                            <Button x:Name="BtnResetSettings" Content="🔄 恢复默认"
+                                    Style="{StaticResource GhostButton}"
+                                    Width="160" Height="38" Margin="12,0,0,0"
+                                    Click="BtnResetSettings_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ========== 系统服务 ========== -->
+            <TabItem Header="🔧 系统服务">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+                        <!-- 服务状态卡片 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="📊 服务状态" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="运行状态:" Style="{StaticResource LabelText}"/>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse x:Name="SvcStatusDot" Width="12" Height="12"
+                                                 Fill="{StaticResource AccentCoral}" Stroke="#88FFFFFF" StrokeThickness="1"/>
+                                        <TextBlock x:Name="SvcStatusText" Text="未安装"
+                                                   Foreground="{StaticResource FgSecondary}"
+                                                   FontSize="12.5" Margin="8,0,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="启动类型:" Style="{StaticResource LabelText}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="SvcStartType" Text="-"
+                                               Foreground="{StaticResource FgSecondary}" FontSize="12.5"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="NSSM:" Style="{StaticResource LabelText}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="SvcNssmPath" Text="-"
+                                               Foreground="{StaticResource FgSecondary}" FontSize="12.5"/>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="可执行文件:" Style="{StaticResource LabelText}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" x:Name="SvcExePath" Text="-"
+                                               Foreground="{StaticResource FgSecondary}" FontSize="12.5"
+                                               TextWrapping="Wrap"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 操作按钮 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="🛠 操作" Style="{StaticResource CardTitle}"/>
+                                <WrapPanel>
+                                    <Button x:Name="BtnSvcInstall" Content="📥 安装服务"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Width="130" Height="34" Margin="0,0,8,8"
+                                            Click="BtnSvcInstall_Click"/>
+                                    <Button x:Name="BtnSvcStart" Content="▶ 启动"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="110" Height="34" Margin="0,0,8,8"
+                                            Click="BtnSvcStart_Click"/>
+                                    <Button x:Name="BtnSvcStop" Content="■ 停止"
+                                            Style="{StaticResource DangerButton}"
+                                            Width="110" Height="34" Margin="0,0,8,8"
+                                            Click="BtnSvcStop_Click"/>
+                                    <Button x:Name="BtnSvcRestart" Content="🔄 重启"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="110" Height="34" Margin="0,0,8,8"
+                                            Click="BtnSvcRestart_Click"/>
+                                    <Button x:Name="BtnSvcUninstall" Content="🗑 卸载"
+                                            Style="{StaticResource DangerButton}"
+                                            Width="130" Height="34" Margin="0,0,8,8"
+                                            Click="BtnSvcUninstall_Click"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 依赖检查 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="📦 依赖检查" Style="{StaticResource CardTitle}"/>
+                                <WrapPanel x:Name="DependenciesPanel">
+                                    <!-- 动态填充 -->
+                                </WrapPanel>
+                                <Button x:Name="BtnCheckDeps" Content="🔍 重新检查"
+                                        Style="{StaticResource GhostButton}"
+                                        Width="130" Height="32" Margin="0,8,0,0"
+                                        Click="BtnCheckDeps_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 服务日志 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="📄 服务日志" Style="{StaticResource CardTitle}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="BtnViewStdout" Content="📄 查看输出日志"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="150" Height="32" Margin="0,0,8,0"
+                                            Click="BtnViewStdout_Click"/>
+                                    <Button x:Name="BtnViewStderr" Content="⚠️ 查看错误日志"
+                                            Style="{StaticResource DangerButton}"
+                                            Width="150" Height="32"
+                                            Click="BtnViewStderr_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ========== 运行日志 ========== -->
+            <TabItem Header="📋 运行日志">
+                <Grid Margin="20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <WrapPanel Grid.Row="0" Margin="0,0,0,10">
+                        <TextBlock Text="筛选:" Style="{StaticResource LabelText}" Margin="0,0,8,0"/>
+                        <ComboBox x:Name="LogFilter" Width="120" Margin="0,0,8,0">
+                            <ComboBoxItem Content="全部" IsSelected="True"/>
+                            <ComboBoxItem Content="信息"/>
+                            <ComboBoxItem Content="成功"/>
+                            <ComboBoxItem Content="警告"/>
+                            <ComboBoxItem Content="错误"/>
+                            <ComboBoxItem Content="调试"/>
+                        </ComboBox>
+                        <Button x:Name="BtnRefreshLog" Content="🔄 刷新"
+                                Style="{StaticResource GhostButton}"
+                                Width="90" Height="28" Margin="0,0,8,0"
+                                Click="BtnRefreshLog_Click"/>
+                        <Button x:Name="BtnSaveLog" Content="💾 另存为..."
+                                Style="{StaticResource SecondaryButton}"
+                                Width="110" Height="28" Margin="0,0,8,0"
+                                Click="BtnSaveLog_Click"/>
+                        <Button x:Name="BtnClearAllLog" Content="🗑 清空全部"
+                                Style="{StaticResource DangerButton}"
+                                Width="110" Height="28"
+                                Click="BtnClearAllLog_Click"/>
+                    </WrapPanel>
+
+                    <Border Grid.Row="1" Background="{StaticResource BgLog}"
+                            BorderBrush="{StaticResource BorderSoft}"
+                            BorderThickness="1" CornerRadius="6">
+                        <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <TextBox x:Name="TxtFullLog" IsReadOnly="True"
+                                     Background="Transparent" BorderThickness="0"
+                                     FontFamily="Consolas" FontSize="11.5"
+                                     Foreground="{StaticResource FgPrimary}"
+                                     TextWrapping="Wrap" Padding="10"/>
+                        </ScrollViewer>
+                    </Border>
+
+                    <TextBlock Grid.Row="2" x:Name="LogCountText"
+                               Text="共 0 条日志" Foreground="{StaticResource FgMuted}"
+                               FontSize="11.5" Margin="0,8,0,0"/>
+                </Grid>
+            </TabItem>
+
+            <!-- ========== 工具箱 ========== -->
+            <TabItem Header="🛠️ 工具箱">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+                        <!-- 执行命令 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="⌨️ 执行命令" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" x:Name="ToolCmd"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1" x:Name="BtnRunCmd"
+                                            Content="▶ 执行 CMD"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Width="120" Height="32"
+                                            Click="BtnRunCmd_Click"/>
+                                </Grid>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" x:Name="ToolPs"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1" x:Name="BtnRunPs"
+                                            Content="▶ 执行 PS"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="120" Height="32"
+                                            Click="BtnRunPs_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 键鼠模拟 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="🖱 键鼠模拟" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBox Grid.Row="0" Grid.Column="0" x:Name="ToolKeys"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,0,8,0"/>
+                                    <Button Grid.Row="0" Grid.Column="1" x:Name="BtnSendKeys"
+                                            Content="⌨️ 发送按键"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="120" Height="32"
+                                            Click="BtnSendKeys_Click"/>
+                                    <TextBox Grid.Row="1" Grid.Column="0" x:Name="ToolMouse"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,6,8,0"
+                                             Text="x=100,y=100,click=left"/>
+                                    <Button Grid.Row="1" Grid.Column="1" x:Name="BtnSendMouse"
+                                            Content="🖱 发送鼠标"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="120" Height="32" Margin="0,6,0,0"
+                                            Click="BtnSendMouse_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 文件操作 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="📂 文件操作" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBox Grid.Row="0" Grid.Column="0" x:Name="ToolReadFile"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,0,8,0"/>
+                                    <Button Grid.Row="0" Grid.Column="1" x:Name="BtnReadFile"
+                                            Content="📖 读取文件"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="120" Height="32"
+                                            Click="BtnReadFile_Click"/>
+                                    <TextBox Grid.Row="1" Grid.Column="0" x:Name="ToolOpenProgram"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,6,8,0"/>
+                                    <Button Grid.Row="1" Grid.Column="1" x:Name="BtnOpenProgram"
+                                            Content="🚀 打开程序"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Width="120" Height="32" Margin="0,6,0,0"
+                                            Click="BtnOpenProgram_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 桌面通知 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="🔔 桌面通知" Style="{StaticResource CardTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBox Grid.Row="0" Grid.Column="0" x:Name="ToolPopupTitle"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,0,8,0"
+                                             Text="WinRemote 通知"/>
+                                    <Button Grid.Row="0" Grid.Column="1" x:Name="BtnShowPopup"
+                                            Content="🔔 发送通知"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Width="120" Height="32"
+                                            Click="BtnShowPopup_Click"/>
+                                    <TextBox Grid.Row="1" Grid.Column="0" x:Name="ToolPopupMsg"
+                                             Height="32" VerticalContentAlignment="Center"
+                                             Padding="8,0" Margin="0,6,8,0"
+                                             Text="Agent 运行正常 ✅"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 截图 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="📸 截图" Style="{StaticResource CardTitle}"/>
+                                <Button x:Name="BtnToolScreenshot"
+                                        Content="📸 立即截图"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Width="160" Height="34"
+                                        Click="BtnToolScreenshot_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 结果输出 -->
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="📤 结果输出" Style="{StaticResource CardTitle}"/>
+                                <Border Background="{StaticResource BgLog}"
+                                        BorderBrush="{StaticResource BorderSoft}"
+                                        BorderThickness="1" CornerRadius="6"
+                                        Height="200">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <TextBox x:Name="TxtToolResult" IsReadOnly="True"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 FontFamily="Consolas" FontSize="11.5"
+                                                 Foreground="{StaticResource FgPrimary}"
+                                                 TextWrapping="Wrap" Padding="10"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- ===== 底栏 ===== -->
+        <Border Grid.Row="2" Style="{StaticResource StatusBar}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" x:Name="StatusText"
+                           Text="就绪"
+                           Style="{StaticResource StatusText}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Ellipse Width="8" Height="8" Fill="#88FFFFFF" Margin="0,0,6,0"
+                             VerticalAlignment="Center"/>
+                    <TextBlock Text="双击启动 · 右键托盘退出"
+                               Foreground="#CCFFFFFF" FontSize="11"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
