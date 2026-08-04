@@ -1,0 +1,255 @@
+<Application x:Class="WinRemoteSharp.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+
+        <!-- ========== 薄荷天蓝清新配色 ========== -->
+
+        <!-- 基础颜色 -->
+        <Color x:Key="MintWhite">#FFF5FAFA</Color>
+        <Color x:Key="MintCream">#FFE8F6F0</Color>
+        <Color x:Key="MintMain">#FF6CC9A8</Color>
+        <Color x:Key="MintDeep">#FF3AAF8A</Color>
+        <Color x:Key="SkyMain">#FF7EC8E3</Color>
+        <Color x:Key="SkyDeep">#FF4AAED0</Color>
+        <Color x:Key="AccentPeach">#FFFFB088</Color>
+        <Color x:Key="AccentCoral">#FFEE6B6B</Color>
+        <Color x:Key="AccentLemon">#FFF4D35E</Color>
+        <Color x:Key="AccentLavender">#FFB8A9E6</Color>
+        <Color x:Key="SuccessGreen">#FF2ECC71</Color>
+        <Color x:Key="WarnOrange">#FFF5A623</Color>
+        <Color x:Key="ErrorRed">#FFE04848</Color>
+        <Color x:Key="TextDark">#FF1A3A33</Color>
+        <Color x:Key="TextMuted">#FF6B8E85</Color>
+        <Color x:Key="CardBorder">#FFB8E0D0</Color>
+
+        <!-- 画刷 -->
+        <SolidColorBrush x:Key="MintWhiteBrush" Color="{StaticResource MintWhite}"/>
+        <SolidColorBrush x:Key="MintCreamBrush" Color="{StaticResource MintCream}"/>
+        <SolidColorBrush x:Key="MintMainBrush" Color="{StaticResource MintMain}"/>
+        <SolidColorBrush x:Key="MintDeepBrush" Color="{StaticResource MintDeep}"/>
+        <SolidColorBrush x:Key="SkyMainBrush" Color="{StaticResource SkyMain}"/>
+        <SolidColorBrush x:Key="SkyDeepBrush" Color="{StaticResource SkyDeep}"/>
+        <SolidColorBrush x:Key="AccentPeachBrush" Color="{StaticResource AccentPeach}"/>
+        <SolidColorBrush x:Key="AccentCoralBrush" Color="{StaticResource AccentCoral}"/>
+        <SolidColorBrush x:Key="AccentLemonBrush" Color="{StaticResource AccentLemon}"/>
+        <SolidColorBrush x:Key="AccentLavenderBrush" Color="{StaticResource AccentLavender}"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessGreen}"/>
+        <SolidColorBrush x:Key="WarnBrush" Color="{StaticResource WarnOrange}"/>
+        <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorRed}"/>
+        <SolidColorBrush x:Key="TextDarkBrush" Color="{StaticResource TextDark}"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
+        <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource CardBorder}"/>
+
+        <!-- 标题栏渐变 -->
+        <LinearGradientBrush x:Key="TitleBarBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="{StaticResource MintMain}" Offset="0"/>
+            <GradientStop Color="{StaticResource SkyDeep}" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- ========== 全局样式 ========== -->
+
+        <!-- 默认窗口背景 -->
+        <Style TargetType="Window">
+            <Setter Property="Background" Value="{StaticResource MintWhiteBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <!-- 按钮基础样式 -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource MintMainBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource MintDeepBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 次按钮 -->
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource SkyMainBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SkyDeepBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 危险按钮 -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource AccentCoralBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FFD63031"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 文本框 -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource MintMainBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 密码框 -->
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <!-- 标签 -->
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="0,2"/>
+        </Style>
+
+        <!-- 复选框 -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,4"/>
+        </Style>
+
+        <!-- TabControl -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- TabItem -->
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Bd" Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0,0,0,3"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource MintMainBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource MintDeepBrush}"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource MintCreamBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- GroupBox -->
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Margin" Value="0,6"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupBox">
+                        <Border Background="White"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Padding="10,6" Background="{StaticResource MintCreamBrush}" CornerRadius="10,10,0,0">
+                                    <ContentPresenter ContentSource="Header" TextElement.FontWeight="SemiBold"
+                                                      TextElement.Foreground="{StaticResource MintDeepBrush}"/>
+                                </Border>
+                                <ContentPresenter Grid.Row="1" Margin="{TemplateBinding Padding}"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TextBlock -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+        </Style>
+
+        <!-- ListBox -->
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+        </Style>
+
+        <!-- ScrollViewer -->
+        <Style TargetType="ScrollViewer">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+    </Application.Resources>
+</Application>

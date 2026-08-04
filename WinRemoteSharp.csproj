@@ -1,0 +1,85 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>WinRemoteSharp</RootNamespace>
+    <AssemblyName>WinRemoteAgent</AssemblyName>
+
+    <!-- Single-file self-contained publish -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishTrimmed>false</PublishTrimmed>
+
+    <!-- Language -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Assembly metadata -->
+    <AssemblyTitle>WinRemote Agent</AssemblyTitle>
+    <AssemblyDescription>WinRemote C# WPF Agent - Remote Control via AstrBot</AssemblyDescription>
+    <AssemblyCompany>WinRemote</AssemblyCompany>
+    <AssemblyProduct>WinRemoteAgent</AssemblyProduct>
+    <AssemblyCopyright>Copyright (c) 2026</AssemblyCopyright>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
+  </PropertyGroup>
+
+  <!--
+    IMPORTANT: SDK-style projects auto-include **\*.cs and **\*.xaml.
+    We disable that and list files explicitly to avoid NETSDK1022 duplicates.
+    No NuGet packages needed - using only BCL + WPF built-in types.
+    System.Drawing.Common is NOT used (it requires separate NuGet install on .NET 6+).
+    Screenshots use WPF's RenderTargetBitmap + JpegBitmapEncoder (built-in).
+  -->
+
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultResourceItems>false</EnableDefaultResourceItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Root directory source files -->
+    <Compile Include="Program.cs" />
+    <Compile Include="App.xaml.cs" />
+    <Compile Include="MainWindow.xaml.cs" />
+    <Compile Include="InputDialog.cs" />
+    <Compile Include="AgentClient.cs" />
+    <Compile Include="ConfigManager.cs" />
+    <Compile Include="ServiceManager.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- XAML pages -->
+    <Page Include="App.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="MainWindow.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Config files copied to output -->
+    <None Include="App.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="app.manifest">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!--
+    NO PackageReference items - zero NuGet dependencies.
+    All functionality uses .NET 8 BCL + WPF built-in assemblies:
+    - System.Net.WebSockets.ClientWebSocket (BCL)
+    - System.Text.Json (BCL, part of net8.0)
+    - System.Windows.Media.Imaging (WPF)
+    - System.Windows.Forms.NotifyIcon (WinForms interop, built-in)
+  -->
+
+</Project>
