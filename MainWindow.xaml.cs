@@ -41,10 +41,7 @@ namespace WinRemoteSharp
             {
                 string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup_crash.log");
                 string time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string line = "[" + time + "] [" + where + "]
-" + ex.ToString() + "
-
-";
+                string line = "[" + time + "] [" + where + "]\n" + ex.ToString() + "\n\n";
                 File.AppendAllText(path, line);
             }
             catch { /* ignore */ }
@@ -123,273 +120,113 @@ namespace WinRemoteSharp
 
         private void UpdateFooterTime()
         {
-            StatusMessage.Text = $"就绪 · {DateTime.Now:HH:mm:ss}";
+            StatusMessage.Text = "就绪 · " + DateTime.Now.ToString("HH:mm:ss");
         }
 
         public void AddLog(string msg)
         {
             string ts = DateTime.Now.ToString("HH:mm:ss");
-            Dispatcher.Invoke(() =>
-            {
-                TxtLog.Text += $"[{ts}] {msg}\n";
-                TxtLog.ScrollToEnd();
-                if (LogStatusText != null)
-                    LogStatusText.Text = msg;
-            });
+            TxtLog.AppendText("[" + ts + "] " + msg + "\n");
+            TxtLog.ScrollToEnd();
         }
-
-        public void SetConnectionState(bool connected)
-        {
-            _isConnected = connected;
-            Dispatcher.Invoke(() =>
-            {
-                if (connected)
-                {
-                    StatusDot.Fill = (SolidColorBrush)FindResource("StatusOnlineBrush");
-                    StatusText.Text = "已连接";
-                    StatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
-                    // 开始呼吸动画
-                    if (FindResource("StatusDotPulse") is Storyboard pulse)
-                        StatusDot.BeginStoryboard(pulse);
-                }
-                else
-                {
-                    StatusDot.Fill = (SolidColorBrush)FindResource("StatusOfflineBrush");
-                    StatusText.Text = "未连接";
-                    StatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
-                    // 停止所有动画并恢复正常大小
-                    StatusDot.BeginStoryboard(new Storyboard());
-                    StatusDot.Width = 12;
-                    StatusDot.Height = 12;
-                }
-                // 同步更新托盘提示
-                _trayManager?.UpdateConnectionStatus(connected);
-            });
-        }
-
-        // ===== Public methods for TrayManager =====
-        public void TrayConnect()
-        {
-            Dispatcher.Invoke(() => BtnConnect_Click(this, new RoutedEventArgs()));
-        }
-
-        public void TrayDisconnect()
-        {
-            Dispatcher.Invoke(() => BtnDisconnect_Click(this, new RoutedEventArgs()));
-        }
-
-        public void TrayInstallService()
-        {
-            Dispatcher.Invoke(() => BtnSvcInstall_Click(this, new RoutedEventArgs()));
-        }
-
-        public void TrayUninstallService()
-        {
-            Dispatcher.Invoke(() => BtnSvcUninstall_Click(this, new RoutedEventArgs()));
-        }
-
-        public void TrayStartService()
-        {
-            Dispatcher.Invoke(() => BtnSvcStart_Click(this, new RoutedEventArgs()));
-        }
-
-        public void TrayStopService()
-        {
-            Dispatcher.Invoke(() => BtnSvcStop_Click(this, new RoutedEventArgs()));
-        }
-
-        public void TrayServiceStatus()
-        {
-            Dispatcher.Invoke(() => RefreshServiceStatus());
-        }
-
-        public void TrayRefreshLogs()
-        {
-            Dispatcher.Invoke(() => RefreshFullLogs());
-        }
-
-        public void TrayOpenLogDir()
-        {
-            Dispatcher.Invoke(() => BtnOpenLogDir_Click(this, new RoutedEventArgs()));
-        }
-
-        public void TrayCheckUpdate()
-        {
-            Dispatcher.Invoke(() => BtnCheckUpdate_Click(this, new RoutedEventArgs()));
-        }
-
-        // ===== Button Handlers =====
 
         private void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
-            if (_isConnected) return;
-
             string url = TxtServerUrl.Text.Trim();
-            string token = "";
-
-            // Prompt for token if empty
-            if (string.IsNullOrEmpty(_config.Token))
+            string token = TxtToken.Password;
+            if (string.IsNullOrEmpty(url))
             {
-                token = InputDialog.Show(this, "认证令牌", "请输入服务器令牌:", "", true);
-                if (token == null) return;
-                _config.Token = token;
-                ConfigManager.Save(_config);
+                AddLog("错误：服务器地址不能为空");
+                return;
             }
-            else
-            {
-                token = _config.Token;
-            }
-
-            BtnConnect.IsEnabled = false;
-            AddLog($"Connecting to {url}...");
-
             _agent = new AgentClient(_config);
-            _agent.OnLog += AddLog;
-            _agent.OnConnectionChanged += SetConnectionState;
-
-            // Connect in background
-            _ = Task.Run(async () =>
+            _agent.OnLog += (s, m) => Dispatcher.Invoke(() => AddLog(m));
+            _agent.OnStatusChanged += (s, connected) => Dispatcher.Invoke(() => UpdateConnectionUI(connected));
+            _agent.OnAgentIdReceived += (s, id) => Dispatcher.Invoke(() => TxtAgentId.Text = id);
+            try
             {
-                try
-                {
-                    await _agent.ConnectAsync(url, token);
-                }
-                catch (Exception ex)
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        AddLog($"Connect error: {ex.Message}");
-                        BtnConnect.IsEnabled = true;
-                    });
-                }
-            });
+                _agent.ConnectAsync(url, token);
+                AddLog("正在连接 " + url + " ...");
+            }
+            catch (Exception ex)
+            {
+                AddLog("连接失败：" + ex.Message);
+            }
         }
 
         private void BtnDisconnect_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent != null)
-            {
-                _agent.Disconnect();
-                _agent = null;
-            }
-            SetConnectionState(false);
-            BtnConnect.IsEnabled = true;
-            AddLog("Disconnected");
+            _agent?.Disconnect();
+            AddLog("已断开连接");
         }
 
-        private void BtnScreenshot_Click(object sender, RoutedEventArgs e)
+        private void UpdateConnectionUI(bool connected)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            AddLog("Screenshot requested...");
+            _isConnected = connected;
+            StatusDot.Fill = connected ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("ErrorBrush");
+            StatusText.Text = connected ? "Agent 运行中" : "Agent 已停止";
+            BtnConnect.IsEnabled = !connected;
+            BtnDisconnect.IsEnabled = connected;
         }
 
-        private void BtnClearLog_Click(object sender, RoutedEventArgs e)
-        {
-            TxtLog.Text = "";
-        }
-
-        // ===== Missing button handlers from XAML =====
         private void BtnShell_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            // Open command dialog
-            string cmd = InputDialog.Show(this, "执行命令", "请输入要执行的命令:", "ipconfig");
-            if (!string.IsNullOrEmpty(cmd))
-            {
-                AddLog($"Executing: {cmd}");
-            }
+            var dlg = new InputDialog("执行命令", "请输入命令（如：ipconfig /all）", "cmd /c ipconfig");
+            if (dlg.ShowDialog() == true) SendCommand("shell", dlg.Result);
         }
 
         private void BtnPowershell_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            string cmd = InputDialog.Show(this, "PowerShell", "请输入 PowerShell 命令:", "Get-Process");
-            if (!string.IsNullOrEmpty(cmd))
-            {
-                AddLog($"PowerShell: {cmd}");
-            }
+            var dlg = new InputDialog("PowerShell 指令", "请输入 PowerShell 指令", "Get-Process");
+            if (dlg.ShowDialog() == true) SendCommand("powershell", dlg.Result);
+        }
+
+        private void BtnScreenshot_Click(object sender, RoutedEventArgs e)
+        {
+            SendCommand("screenshot", "");
         }
 
         private void BtnKeypress_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            string key = InputDialog.Show(this, "模拟按键", "请输入按键名:", "enter");
-            if (!string.IsNullOrEmpty(key))
-            {
-                AddLog($"Key press: {key}");
-            }
+            var dlg = new InputDialog("模拟按键", "键名（如：Enter, Ctrl+C, Win+R）", "Enter");
+            if (dlg.ShowDialog() == true) SendCommand("keypress", dlg.Result);
         }
 
         private void BtnMouse_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            AddLog("Mouse operation requested...");
+            var dlg = new InputDialog("鼠标操作", "格式：x,y,action (如：500,300,click)", "500,300,click");
+            if (dlg.ShowDialog() == true) SendCommand("mouse", dlg.Result);
         }
 
         private void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            string path = InputDialog.Show(this, "打开程序", "请输入程序路径:", "notepad.exe");
-            if (!string.IsNullOrEmpty(path))
-            {
-                AddLog($"Open: {path}");
-            }
+            var dlg = new InputDialog("打开程序", "程序路径或命令（如：notepad.exe）", "notepad.exe");
+            if (dlg.ShowDialog() == true) SendCommand("open", dlg.Result);
         }
 
         private void BtnReadFile_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            string path = InputDialog.Show(this, "读取文件", "请输入文件路径:", "C:\\Windows\\System32\\drivers\\etc\\hosts");
-            if (!string.IsNullOrEmpty(path))
-            {
-                AddLog($"Read file: {path}");
-            }
+            var dlg = new InputDialog("读取文件", "文件完整路径", "C:\\Windows\\System32\\drivers\\etc\\hosts");
+            if (dlg.ShowDialog() == true) SendCommand("readfile", dlg.Result);
         }
 
         private void BtnWriteFile_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            string path = InputDialog.Show(this, "写入文件", "请输入文件路径:", "C:\\temp\\test.txt");
-            if (!string.IsNullOrEmpty(path))
-            {
-                string content = InputDialog.Show(this, "写入内容", "请输入要写入的内容:", "Hello WinRemote!");
-                AddLog($"Write file: {path}");
-            }
+            var dlg = new InputDialog("写入文件", "格式：路径|内容", "C:\\test.txt|Hello WinRemote");
+            if (dlg.ShowDialog() == true) SendCommand("writefile", dlg.Result);
         }
 
-        // ===== Settings Tab =====
+        private void SendCommand(string type, string payload)
+        {
+            if (_agent == null || !_agent.IsConnected()) { AddLog("未连接"); return; }
+            _agent.SendCommand(type, payload);
+            AddLog("已发送 [" + type + "]：" + payload);
+        }
+
+        private void BtnClearLog_Click(object sender, RoutedEventArgs e)
+        {
+            TxtLog.Clear();
+        }
 
         private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)
         {
@@ -398,12 +235,11 @@ namespace WinRemoteSharp
                 _config.ServerUrl = TxtServerUrl.Text.Trim();
                 _config.ConnectionTimeout = int.Parse(TxtShellTimeout.Text);
                 _config.HeartbeatInterval = int.Parse(TxtHeartbeat.Text);
-                _config.ReconnectInterval = int.Parse(TxtHeartbeat.Text);
                 _config.ScreenshotQuality = int.Parse(TxtScreenshotQuality.Text);
-                _config.AllowedIPs = TxtWhitelist.Text.Trim();
+                _config.AllowedIPs = TxtWhitelist.Text;
                 _config.Token = TxtToken.Password;
-                _config.MaxOutputBytes = int.Parse(TxtMaxOutput.Text);
-                _config.MaxReadBytes = int.Parse(TxtMaxReadBytes.Text);
+                _config.MaxOutputBytes = long.Parse(TxtMaxOutput.Text);
+                _config.MaxReadBytes = long.Parse(TxtMaxReadBytes.Text);
                 _config.BlockedKeywords = TxtBlacklist.Text;
                 _config.AllowPowerShell = ChkAllowPowershell.IsChecked == true;
                 _config.AllowWrite = ChkAllowWrite.IsChecked == true;
@@ -411,175 +247,86 @@ namespace WinRemoteSharp
                 _config.StrictWhitelist = ChkStrictWhitelist.IsChecked == true;
                 _config.PasswordGuardEnabled = ChkPasswordGuard.IsChecked == true;
                 _config.PasswordGuard = TxtPasswordGuard.Password;
-
-                ConfigManager.Save(_config);
-                AddLog("Configuration saved");
-                System.Windows.MessageBox.Show("配置已保存", "成功", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                ConfigManager.Save(_config, "config.json");
+                AddLog("配置已保存");
+                if (_agent != null) _agent.UpdateConfig(_config);
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"保存失败: {ex.Message}", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                AddLog("保存失败：" + ex.Message);
             }
         }
 
-        // ===== Service Tab =====
+        private void BtnSvcStart_Click(object sender, RoutedEventArgs e) { RunNssm("start"); }
+        private void BtnSvcStop_Click(object sender, RoutedEventArgs e) { RunNssm("stop"); }
+        private void BtnSvcRestart_Click(object sender, RoutedEventArgs e) { RunNssm("restart"); }
+        private void BtnSvcInstall_Click(object sender, RoutedEventArgs e) { RunNssm("install"); }
+        private void BtnSvcUninstall_Click(object sender, RoutedEventArgs e) { RunNssm("uninstall"); }
 
-        private void BtnSvcInstall_Click(object sender, RoutedEventArgs e)
+        private void RunNssm(string action)
         {
-            var sm = new ServiceManager();
-            AddLog("Installing service...");
-            bool ok = sm.Install();
-            AddLog(ok ? "Service installed successfully" : "Service installation failed (need nssm.exe)");
-            RefreshServiceStatus();
-        }
-
-        private void BtnSvcUninstall_Click(object sender, RoutedEventArgs e)
-        {
-            var sm = new ServiceManager();
-            AddLog("Uninstalling service...");
-            bool ok = sm.Uninstall();
-            AddLog(ok ? "Service uninstalled" : "Service uninstall failed");
-            RefreshServiceStatus();
-        }
-
-        private void BtnSvcStart_Click(object sender, RoutedEventArgs e)
-        {
-            var sm = new ServiceManager();
-            AddLog("Starting service...");
-            bool ok = sm.Start();
-            AddLog(ok ? "Service started" : "Service start failed");
-            RefreshServiceStatus();
-        }
-
-        private void BtnSvcStop_Click(object sender, RoutedEventArgs e)
-        {
-            var sm = new ServiceManager();
-            AddLog("Stopping service...");
-            bool ok = sm.Stop();
-            AddLog(ok ? "Service stopped" : "Service stop failed");
-            RefreshServiceStatus();
-        }
-
-        private void BtnSvcRestart_Click(object sender, RoutedEventArgs e)
-        {
-            var sm = new ServiceManager();
-            AddLog("Restarting service...");
-            sm.Stop();
-            System.Threading.Thread.Sleep(2000);
-            bool ok = sm.Start();
-            AddLog(ok ? "Service restarted" : "Service restart failed");
-            RefreshServiceStatus();
-        }
-
-        private void BtnServiceStatus_Click(object sender, RoutedEventArgs e)
-        {
+            AddLog("NSSM " + action + " ...");
+            var sm = new ServiceManager("config.json");
+            bool ok = false;
+            switch (action)
+            {
+                case "start": ok = sm.Start(); break;
+                case "stop": ok = sm.Stop(); break;
+                case "restart": ok = sm.Stop() && sm.Start(); break;
+                case "install": ok = sm.Install(); break;
+                case "uninstall": ok = sm.Uninstall(); break;
+            }
+            AddLog("NSSM " + action + (ok ? " 成功" : " 失败"));
             RefreshServiceStatus();
         }
 
         private void RefreshServiceStatus()
         {
-            var sm = new ServiceManager();
-            string status = sm.GetStatus();
-            Dispatcher.Invoke(() =>
-            {
-                ServiceStatusText.Text = status;
-                switch (status)
-                {
-                    case "Running":
-                        ServiceStatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
-                        break;
-                    case "Stopped":
-                        ServiceStatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
-                        break;
-                    default:
-                        ServiceStatusText.Foreground = (SolidColorBrush)FindResource("TextSecondaryBrush");
-                        break;
-                }
-                TxtServiceLog.Text = sm.GetRecentLogs(50);
-            });
+            var sm = new ServiceManager("config.json");
+            var status = sm.GetStatus();
+            ServiceStatusText.Text = status;
+            ServiceDot.Fill = status.Contains("Running") ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("ErrorBrush");
         }
 
         private void BtnDownloadNssm_Click(object sender, RoutedEventArgs e)
         {
-            AddLog("Downloading NSSM...");
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "https://nssm.cc/download",
-                    UseShellExecute = true
-                });
-            }
-            catch { }
+            AddLog("正在下载 NSSM ...");
+            var sm = new ServiceManager("config.json");
+            if (sm.EnsureNssm()) { AddLog("NSSM 已就绪"); NssmStatusText.Text = "NSSM 状态：已就绪"; }
+            else { AddLog("NSSM 下载失败"); NssmStatusText.Text = "NSSM 状态：下载失败"; }
         }
 
         private void BtnViewLogs_Click(object sender, RoutedEventArgs e)
         {
-            RefreshFullLogs();
+            var sm = new ServiceManager("config.json");
+            TxtServiceLog.Text = sm.GetRecentLogs(50);
         }
-
-        // ===== Logs Tab =====
 
         private void BtnRefreshLog_Click(object sender, RoutedEventArgs e)
         {
-            RefreshFullLogs();
+            var sm = new ServiceManager("config.json");
+            TxtFullLog.Text = sm.GetRecentLogs(200);
+            LogStatusText.Text = "已刷新 · " + DateTime.Now.ToString("HH:mm:ss");
         }
 
         private void BtnClearServiceLog_Click(object sender, RoutedEventArgs e)
         {
-            TxtFullLog.Text = "";
+            TxtFullLog.Clear();
+            LogStatusText.Text = "已清空";
         }
 
-        private void BtnOpenLogDir_Click(object sender, RoutedEventArgs e)
-        {
-            string logDir = _config.LogPath;
-            if (!Path.IsPathRooted(logDir))
-                logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, logDir);
-            if (Directory.Exists(logDir))
-                Process.Start("explorer.exe", logDir);
-            else
-                System.Windows.MessageBox.Show($"日志目录不存在: {logDir}", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-        }
-
-        private void RefreshFullLogs()
-        {
-            var sm = new ServiceManager();
-            string logs = sm.GetRecentLogs(200);
-            Dispatcher.Invoke(() => TxtFullLog.Text = logs);
-        }
-
-        // ===== About Tab =====
-
-        private void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
-        {
-            System.Windows.MessageBox.Show("当前已是最新版本 v1.2.0", "检查更新", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-        }
-
-        private void BtnOpenGitHub_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "https://github.com/183kugua/astrbot_plugin_winremote",
-                    UseShellExecute = true
-                });
-            }
-            catch { }
-        }
-
-        // ===== Tools Tab =====
         private void BtnSendTest_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent == null || !_agent.IsConnected())
-            {
-                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                return;
-            }
-            string cmd = TxtTestCommand.Text.Trim();
-            if (string.IsNullOrEmpty(cmd)) return;
-            AddLog($"Test command: {cmd}");
-            // 这里可以添加实际发送测试指令的逻辑
+            if (_agent == null || !_agent.IsConnected()) { TxtTestResult.Text = "未连接"; return; }
+            _agent.SendCommand("shell", TxtTestCommand.Text);
+            TxtTestResult.Text = "已发送测试指令：" + TxtTestCommand.Text;
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            RefreshServiceStatus();
+            var sm = new ServiceManager("config.json");
+            NssmStatusText.Text = sm.NssmExists() ? "NSSM 状态：已就绪" : "NSSM 状态：未下载";
         }
     }
 }
