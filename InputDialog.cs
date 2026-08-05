@@ -6,6 +6,8 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using WpfButton = System.Windows.Controls.Button;
+using WpfTextBox = System.Windows.Controls.TextBox;
 
 namespace WinRemoteSharp
 {
@@ -14,7 +16,7 @@ namespace WinRemoteSharp
     /// </summary>
     public class InputDialog : Window
     {
-        private TextBox _textBox;
+        private WpfTextBox _textBox;
         private PasswordBox _passwordBox;
         private bool _isPassword;
         private Border _mainBorder;
@@ -209,12 +211,12 @@ namespace WinRemoteSharp
             };
         }
 
-        private Button CreateButton(string content, bool isPrimary)
+        private WpfButton CreateButton(string content, bool isPrimary)
         {
             var brushKey = isPrimary ? "MintMainBrush" : "TextSecondaryBrush";
             var hoverBrushKey = isPrimary ? "MintDeepBrush" : "TextMutedBrush";
 
-            var btn = new Button
+            var btn = new WpfButton
             {
                 Content = content,
                 Padding = new Thickness(24, 10, 24, 10),
@@ -228,7 +230,7 @@ namespace WinRemoteSharp
             };
 
             // 圆角模板
-            btn.Template = new ControlTemplate(typeof(Button))
+            btn.Template = new ControlTemplate(typeof(WpfButton))
             {
                 VisualTree = new FrameworkElementFactory(typeof(Border), "Bd")
                 {
@@ -255,13 +257,13 @@ namespace WinRemoteSharp
             var triggers = new TriggerCollection();
             
             // IsMouseOver
-            var mouseOverTrigger = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
-            mouseOverTrigger.Setters.Add(new Setter(Button.BackgroundProperty, (SolidColorBrush)Application.Current.Resources[hoverBrushKey]));
+            var mouseOverTrigger = new Trigger { Property = WpfButton.IsMouseOverProperty, Value = true };
+            mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, (SolidColorBrush)Application.Current.Resources[hoverBrushKey]));
             triggers.Add(mouseOverTrigger);
 
             // IsPressed
-            var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
-            pressedTrigger.Setters.Add(new Setter(Button.OpacityProperty, 0.9));
+            var pressedTrigger = new Trigger { Property = WpfButton.IsPressedProperty, Value = true };
+            pressedTrigger.Setters.Add(new Setter(WpfButton.OpacityProperty, 0.9));
             pressedTrigger.EnterActions.Add(new BeginStoryboard
             {
                 Storyboard = new Storyboard
@@ -282,8 +284,8 @@ namespace WinRemoteSharp
             triggers.Add(pressedTrigger);
 
             // IsEnabled
-            var disabledTrigger = new Trigger { Property = Button.IsEnabledProperty, Value = false };
-            disabledTrigger.Setters.Add(new Setter(Button.OpacityProperty, 0.4));
+            var disabledTrigger = new Trigger { Property = WpfButton.IsEnabledProperty, Value = false };
+            disabledTrigger.Setters.Add(new Setter(WpfButton.OpacityProperty, 0.4));
             triggers.Add(disabledTrigger);
 
             btn.Template.Triggers = triggers;

@@ -18,7 +18,7 @@ namespace WinRemoteSharp.Core
         private CancellationTokenSource _cts;
         private bool _connected;
         private string _authToken = "";
-        private Timer _heartbeatTimer;
+        private System.Threading.Timer _heartbeatTimer;
 
         // Win32 GDI for screenshots - zero System.Drawing dependency
         [DllImport("user32.dll")]
@@ -151,7 +151,7 @@ namespace WinRemoteSharp.Core
                     await SendJsonAsync(authMsg);
 
                     // Start heartbeat
-                    _heartbeatTimer = new Timer(async s => await SendHeartbeat(), null, 0, _config.HeartbeatInterval * 1000);
+                    _heartbeatTimer = new System.Threading.Timer(async s => await SendHeartbeat(), null, 0, _config.HeartbeatInterval * 1000);
 
                     // Listen for messages
                     await ReceiveLoop();
