@@ -1,0 +1,88 @@
+{
+  "format": 1,
+  "restore": {
+    "/root/data/workspaces/_FriendMessage_888AFA60F64EB00CC98608ECAD855DD6/WinRemoteSharp/WinRemoteSharp.csproj": {}
+  },
+  "projects": {
+    "/root/data/workspaces/_FriendMessage_888AFA60F64EB00CC98608ECAD855DD6/WinRemoteSharp/WinRemoteSharp.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/root/data/workspaces/_FriendMessage_888AFA60F64EB00CC98608ECAD855DD6/WinRemoteSharp/WinRemoteSharp.csproj",
+        "projectName": "WinRemoteAgent",
+        "projectPath": "/root/data/workspaces/_FriendMessage_888AFA60F64EB00CC98608ECAD855DD6/WinRemoteSharp/WinRemoteSharp.csproj",
+        "packagesPath": "/root/.nuget/packages/",
+        "outputPath": "/root/data/workspaces/_FriendMessage_888AFA60F64EB00CC98608ECAD855DD6/WinRemoteSharp/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/root/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0-windows"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0-windows7.0": {
+            "targetAlias": "net8.0-windows",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows",
+          "dependencies": {
+            "Microsoft.NET.ILLink.Tasks": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.29, )",
+              "autoReferenced": true
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[8.0.29, 8.0.29]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[8.0.29, 8.0.29]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.129/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
+        }
+      }
+    }
+  }
+}

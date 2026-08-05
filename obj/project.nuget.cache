@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "QfsLnjrSFn1clUJrYNT97LFtheYFONi+9ljuZGy5IQilVJyyv2aaJU0SRsxIz9YjHvGrmr7QwFY4WIKn4g0RgA==",
+  "success": true,
+  "projectFilePath": "/root/data/workspaces/_FriendMessage_888AFA60F64EB00CC98608ECAD855DD6/WinRemoteSharp/WinRemoteSharp.csproj",
+  "expectedPackageFiles": [
+    "/root/.nuget/packages/microsoft.net.illink.tasks/8.0.29/microsoft.net.illink.tasks.8.0.29.nupkg.sha512",
+    "/root/.nuget/packages/microsoft.netcore.app.runtime.win-x64/8.0.29/microsoft.netcore.app.runtime.win-x64.8.0.29.nupkg.sha512",
+    "/root/.nuget/packages/microsoft.aspnetcore.app.runtime.win-x64/8.0.29/microsoft.aspnetcore.app.runtime.win-x64.8.0.29.nupkg.sha512",
+    "/root/.nuget/packages/microsoft.netcore.app.host.win-x64/8.0.29/microsoft.netcore.app.host.win-x64.8.0.29.nupkg.sha512"
+  ],
+  "logs": []
+}

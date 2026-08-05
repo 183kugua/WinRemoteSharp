@@ -45,27 +45,26 @@ namespace WinRemoteSharp
         private void ApplyConfigToUI()
         {
             TxtServerUrl.Text = _config.ServerUrl;
-            TxtTimeout.Text = _config.ConnectionTimeout.ToString();
+            TxtShellTimeout.Text = _config.ConnectionTimeout.ToString();
             TxtHeartbeat.Text = _config.HeartbeatInterval.ToString();
-            TxtReconnect.Text = _config.ReconnectInterval.ToString();
-            TxtQuality.Text = _config.ScreenshotQuality.ToString();
-            TxtWidth.Text = _config.ScreenshotWidth.ToString();
-            TxtHeight.Text = _config.ScreenshotHeight.ToString();
-            TxtAllowedIPs.Text = _config.AllowedIPs;
+            // TxtReconnect - 未在 XAML 中定义，暂时跳过
+            TxtScreenshotQuality.Text = _config.ScreenshotQuality.ToString();
+            // TxtWidth / TxtHeight - 未在 XAML 中定义，暂时跳过
+            TxtWhitelist.Text = _config.AllowedIPs;
         }
 
         private void UpdateFooterTime()
         {
-            FooterTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            // FooterTime - 未在 XAML 中定义，暂时跳过
+            // FooterTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
         private void AddLog(string msg)
         {
             string ts = DateTime.Now.ToString("HH:mm:ss");
-            LogText.Text += $"[{ts}] {msg}\n";
-            FooterStatus.Text = msg;
-            // Auto-scroll
-            LogScroller.ScrollToBottom();
+            TxtLog.Text += $"[{ts}] {msg}\n";
+            LogStatusText.Text = msg;
+            // LogScroller - 未在 XAML 中定义，暂时跳过自动滚动
         }
 
         private void SetConnectionState(bool connected)
@@ -159,7 +158,7 @@ namespace WinRemoteSharp
 
         private void BtnClearLog_Click(object sender, RoutedEventArgs e)
         {
-            LogText.Text = "";
+            TxtLog.Text = "";
         }
 
         // ===== Settings Tab =====
@@ -169,13 +168,14 @@ namespace WinRemoteSharp
             try
             {
                 _config.ServerUrl = TxtServerUrl.Text.Trim();
-                _config.ConnectionTimeout = int.Parse(TxtTimeout.Text);
+                _config.ConnectionTimeout = int.Parse(TxtShellTimeout.Text);
                 _config.HeartbeatInterval = int.Parse(TxtHeartbeat.Text);
-                _config.ReconnectInterval = int.Parse(TxtReconnect.Text);
-                _config.ScreenshotQuality = int.Parse(TxtQuality.Text);
-                _config.ScreenshotWidth = int.Parse(TxtWidth.Text);
-                _config.ScreenshotHeight = int.Parse(TxtHeight.Text);
-                _config.AllowedIPs = TxtAllowedIPs.Text.Trim();
+                _config.ReconnectInterval = int.Parse(TxtHeartbeat.Text);
+                _config.ScreenshotQuality = int.Parse(TxtScreenshotQuality.Text);
+                // 截图宽高使用默认值 (1920x1080)，界面无输入框
+                // _config.ScreenshotWidth = 1920;
+                // _config.ScreenshotHeight = 1080;
+                _config.AllowedIPs = TxtWhitelist.Text.Trim();
 
                 ConfigManager.Save(_config);
                 AddLog("Configuration saved");
@@ -247,7 +247,7 @@ namespace WinRemoteSharp
                     ServiceStatusText.Foreground = (SolidColorBrush)FindResource("TextSecondaryBrush");
                     break;
             }
-            ServiceLogText.Text = sm.GetRecentLogs(50);
+            TxtServiceLog.Text = sm.GetRecentLogs(50);
         }
 
         // ===== Logs Tab =====
@@ -272,7 +272,7 @@ namespace WinRemoteSharp
         {
             var sm = new ServiceManager();
             string logs = sm.GetRecentLogs(200);
-            FullLogText.Text = logs;
+            TxtFullLog.Text = logs;
         }
 
         // ===== About Tab =====
