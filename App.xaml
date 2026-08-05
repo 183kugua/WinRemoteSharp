@@ -40,6 +40,14 @@
         <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorRed}"/>
         <SolidColorBrush x:Key="TextDarkBrush" Color="{StaticResource TextDark}"/>
         <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
+        
+        <!-- 输入框对话框资源 -->
+        <SolidColorBrush x:Key="BgLightBrush" Color="{StaticResource MintWhite}"/>
+        <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource MintWhite}"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextDark}"/>
+        <SolidColorBrush x:Key="BorderLightBrush" Color="{StaticResource CardBorder}"/>
+        <SolidColorBrush x:Key="TextLightBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource MintCream}"/>
         <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource CardBorder}"/>
 
         <!-- 标题栏渐变 -->
