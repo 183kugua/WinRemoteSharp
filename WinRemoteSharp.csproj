@@ -76,8 +76,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Resources -->
-    <Resource Include="Resources\DialogIcon.png" />
+    <!-- Resources (temporarily disabled for Linux build) -->
+    <!-- <Resource Include="Resources\DialogIcon.png" /> -->
   </ItemGroup>
 
   <ItemGroup>
