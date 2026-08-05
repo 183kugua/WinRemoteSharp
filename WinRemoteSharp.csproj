@@ -74,6 +74,11 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Resources -->
+    <Resource Include="Resources\DialogIcon.png" />
+  </ItemGroup>
+
   <!--
     NO PackageReference items - zero NuGet dependencies.
     All functionality uses .NET 8 BCL + WPF built-in assemblies:

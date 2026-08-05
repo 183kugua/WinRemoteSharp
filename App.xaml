@@ -80,6 +80,115 @@
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
 
+        <!-- 新增：TabItem 淡入滑入动画 -->
+        <Storyboard x:Key="TabContentFadeIn">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                           From="0" To="1" Duration="0:0:0.25"/>
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)"
+                           From="10" To="0" Duration="0:0:0.25">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- 新增：面板滑入动画 -->
+        <Storyboard x:Key="PanelSlideIn">
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                           From="-20" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                           From="0" To="1" Duration="0:0:0.3"/>
+        </Storyboard>
+
+        <!-- 新增：面板滑出动画 -->
+        <Storyboard x:Key="PanelSlideOut">
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                           From="0" To="20" Duration="0:0:0.2">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                           From="1" To="0" Duration="0:0:0.2"/>
+        </Storyboard>
+
+        <!-- 新增：加载转圈动画 -->
+        <Storyboard x:Key="LoadingSpin" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)"
+                           From="0" To="360" Duration="0:0:1"/>
+        </Storyboard>
+
+        <!-- 新增：窗口入场动画 -->
+        <Storyboard x:Key="WindowEntrance">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                           From="0" To="1" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)"
+                           From="20" To="0" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- 新增：GroupBox 标题展开动画 -->
+        <Storyboard x:Key="GroupBoxExpand">
+            <DoubleAnimation Storyboard.TargetProperty="Height"
+                           From="0" To="Auto" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- 新增：进度条平滑动画 -->
+        <Storyboard x:Key="ProgressBarSmooth">
+            <DoubleAnimation Storyboard.TargetProperty="Value"
+                           Duration="0:0:0.5">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- 新增：悬浮卡片上浮动画 -->
+        <Storyboard x:Key="CardHoverUp">
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)"
+                           From="0" To="-4" Duration="0:0:0.2"/>
+            <DoubleAnimation Storyboard.TargetProperty="Effect.(DropShadowEffect.BlurRadius)"
+                           From="8" To="20" Duration="0:0:0.2"/>
+            <DoubleAnimation Storyboard.TargetProperty="Effect.(DropShadowEffect.ShadowDepth)"
+                           From="2" To="6" Duration="0:0:0.2"/>
+        </Storyboard>
+
+        <Storyboard x:Key="CardHoverDown">
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)"
+                           From="-4" To="0" Duration="0:0:0.2"/>
+            <DoubleAnimation Storyboard.TargetProperty="Effect.(DropShadowEffect.BlurRadius)"
+                           From="20" To="8" Duration="0:0:0.2"/>
+            <DoubleAnimation Storyboard.TargetProperty="Effect.(DropShadowEffect.ShadowDepth)"
+                           From="6" To="2" Duration="0:0:0.2"/>
+        </Storyboard>
+
+        <!-- 新增：列表项交错入场动画 -->
+        <Storyboard x:Key="ListItemStaggerIn">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                           From="0" To="1" Duration="0:0:0.3"/>
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                           From="-30" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
         <!-- 画刷 -->
         <SolidColorBrush x:Key="MintWhiteBrush" Color="{StaticResource MintWhite}"/>
         <SolidColorBrush x:Key="MintCreamBrush" Color="{StaticResource MintCream}"/>
@@ -96,6 +205,12 @@
         <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorRed}"/>
         <SolidColorBrush x:Key="TextDarkBrush" Color="{StaticResource TextDark}"/>
         <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
+        
+        <!-- 状态指示画刷 -->
+        <SolidColorBrush x:Key="StatusOnlineBrush" Color="{StaticResource SuccessGreen}"/>
+        <SolidColorBrush x:Key="StatusOfflineBrush" Color="{StaticResource ErrorRed}"/>
+        <SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource SuccessGreen}"/>
+        <SolidColorBrush x:Key="AccentRedBrush" Color="{StaticResource ErrorRed}"/>
         
         <!-- 输入框对话框资源 -->
         <SolidColorBrush x:Key="BgLightBrush" Color="{StaticResource MintWhite}"/>
@@ -120,6 +235,18 @@
             <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="FontSize" Value="13"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform X="0" Y="0"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Opacity" Value="0"/>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                    <BeginStoryboard Storyboard="{StaticResource WindowEntrance}"/>
+                </EventTrigger>
+            </Style.Triggers>
         </Style>
 
         <!-- 按钮基础样式 (增强版) -->
@@ -134,7 +261,12 @@
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="RenderTransform">
                 <Setter.Value>
-                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                    <TransformGroup>
+                        <ScaleTransform ScaleX="1" ScaleY="1"/>
+                        <SkewTransform AngleX="0" AngleY="0"/>
+                        <RotateTransform Angle="0"/>
+                        <TranslateTransform X="0" Y="0"/>
+                    </TransformGroup>
                 </Setter.Value>
             </Setter>
             <Setter Property="Template">
@@ -227,7 +359,7 @@
             </Setter>
         </Style>
 
-        <!-- 密码框 -->
+        <!-- 密码框 (增强版) -->
         <Style TargetType="PasswordBox">
             <Setter Property="Background" Value="White"/>
             <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
@@ -235,6 +367,206 @@
             <Setter Property="BorderThickness" Value="1.5"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard Storyboard="{StaticResource TextBoxGlowIn}"/>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard Storyboard="{StaticResource TextBoxGlowOut}"/>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 下拉框 (增强版) -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <Grid>
+                                <ToggleButton x:Name="ToggleButton" 
+                                              Background="Transparent"
+                                              BorderThickness="0"
+                                              Focusable="False"
+                                              ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <Path x:Name="Arrow" Fill="{StaticResource TextMutedBrush}" 
+                                          Data="M 0 0 L 4 4 L 8 0 Z" 
+                                          VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                                </ToggleButton>
+                                <ContentPresenter x:Name="ContentSite" 
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left"
+                                                  Margin="10,0,30,0"
+                                                  IsHitTestVisible="False"/>
+                                <Popup x:Name="Popup" 
+                                       AllowsTransparency="True" 
+                                       Placement="Bottom"
+                                       IsOpen="{TemplateBinding IsDropDownOpen}">
+                                    <Border x:Name="DropDownBorder" Background="White"
+                                            BorderBrush="{StaticResource MintMainBrush}"
+                                            BorderThickness="1.5"
+                                            CornerRadius="6"
+                                            MaxHeight="200"
+                                            MinWidth="{TemplateBinding ActualWidth}"
+                                            Effect="{StaticResource {x:Static SystemParameters.DropShadowKey}}">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard Storyboard="{StaticResource TextBoxGlowIn}"/>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard Storyboard="{StaticResource TextBoxGlowOut}"/>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="180" CenterX="4" CenterY="2"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBoxItem -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource MintCreamBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource MintMainBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 进度条 (增强版) -->
+        <Style TargetType="ProgressBar">
+            <Setter Property="Height" Value="6"/>
+            <Setter Property="Background" Value="{StaticResource MintCreamBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource MintMainBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border x:Name="Track" Background="{TemplateBinding Background}"
+                                CornerRadius="3" SnapsToDevicePixels="True">
+                            <Grid x:Name="PART_Indicator" ClipToBounds="True">
+                                <Border x:Name="Indicator" Background="{TemplateBinding Foreground}"
+                                        CornerRadius="3" HorizontalAlignment="Left">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                    </Border.RenderTransform>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 悬浮卡片 Border 样式 -->
+        <Style x:Key="HoverCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform X="0" Y="0"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Color="#20000000" Opacity="0.3"/>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard Storyboard="{StaticResource CardHoverUp}"/>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard Storyboard="{StaticResource CardHoverDown}"/>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 列表项容器 -->
+        <Style x:Key="AnimatedListBoxItem" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <TranslateTransform X="0" Y="0"/>
+                            </Border.RenderTransform>
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource MintCreamBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource MintCreamBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- 标签 -->
@@ -251,10 +583,39 @@
             <Setter Property="Margin" Value="0,4"/>
         </Style>
 
-        <!-- TabControl -->
+        <!-- TabControl (增强版：内容切换动画) -->
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TabPanel Grid.Row="0" x:Name="HeaderPanel"
+                                      Panel.ZIndex="1"
+                                      Margin="0,0,4,-1"
+                                      IsItemsHost="True"
+                                      KeyboardNavigation.TabIndex="1"/>
+                            <Border Grid.Row="1" x:Name="ContentPanel"
+                                    Background="Transparent"
+                                    KeyboardNavigation.TabIndex="2"
+                                    KeyboardNavigation.DirectionalNavigation="Contained">
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                  ContentSource="SelectedContent"
+                                                  Margin="0,8,0,0">
+                                    <ContentPresenter.RenderTransform>
+                                        <TranslateTransform X="0" Y="0"/>
+                                    </ContentPresenter.RenderTransform>
+                                </ContentPresenter>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- TabItem (增强版) -->
@@ -278,6 +639,9 @@
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource MintMainBrush}"/>
                                 <Setter Property="Foreground" Value="{StaticResource MintDeepBrush}"/>
                                 <Setter Property="FontWeight" Value="Bold"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard Storyboard="{StaticResource TabContentFadeIn}"/>
+                                </Trigger.EnterActions>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource MintCreamBrush}"/>
@@ -288,7 +652,7 @@
             </Setter>
         </Style>
 
-        <!-- GroupBox -->
+        <!-- GroupBox (增强版：内容滑入动画) -->
         <Style TargetType="GroupBox">
             <Setter Property="Foreground" Value="{StaticResource TextDarkBrush}"/>
             <Setter Property="FontSize" Value="13"/>
@@ -299,7 +663,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="GroupBox">
-                        <Border Background="White"
+                        <Border x:Name="OuterBorder" Background="White"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="10">
@@ -312,9 +676,32 @@
                                     <ContentPresenter ContentSource="Header" TextElement.FontWeight="SemiBold"
                                                       TextElement.Foreground="{StaticResource MintDeepBrush}"/>
                                 </Border>
-                                <ContentPresenter Grid.Row="1" Margin="{TemplateBinding Padding}"/>
+                                <Border Grid.Row="1" x:Name="ContentBorder" Margin="{TemplateBinding Padding}">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform X="0" Y="0"/>
+                                    </Border.RenderTransform>
+                                    <ContentPresenter/>
+                                </Border>
                             </Grid>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ContentBorder"
+                                                       Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                                                       From="-20" To="0" Duration="0:0:0.3">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="ContentBorder"
+                                                       Storyboard.TargetProperty="Opacity"
+                                                       From="0" To="1" Duration="0:0:0.3"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
