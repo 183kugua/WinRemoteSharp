@@ -41,7 +41,7 @@ namespace WinRemoteSharp
             {
                 string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup_crash.log");
                 string time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string line = "[" + time + "] [" + where + "]" + "
+                string line = "[" + time + "] [" + where + "]
 " + ex.ToString() + "
 
 ";
