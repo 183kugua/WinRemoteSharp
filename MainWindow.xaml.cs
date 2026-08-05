@@ -189,7 +189,7 @@ namespace WinRemoteSharp
 
         // ===== Button Handlers =====
 
-        private async void BtnConnect_Click(object sender, RoutedEventArgs e)
+        private void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
             if (_isConnected) return;
 
@@ -246,11 +246,11 @@ namespace WinRemoteSharp
             AddLog("Disconnected");
         }
 
-        private async void BtnScreenshot_Click(object sender, RoutedEventArgs e)
+        private void BtnScreenshot_Click(object sender, RoutedEventArgs e)
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             AddLog("Screenshot requested...");
@@ -266,7 +266,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             // Open command dialog
@@ -281,7 +281,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             string cmd = InputDialog.Show(this, "PowerShell", "请输入 PowerShell 命令:", "Get-Process");
@@ -295,7 +295,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             string key = InputDialog.Show(this, "模拟按键", "请输入按键名:", "enter");
@@ -309,7 +309,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             AddLog("Mouse operation requested...");
@@ -319,7 +319,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             string path = InputDialog.Show(this, "打开程序", "请输入程序路径:", "notepad.exe");
@@ -333,7 +333,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             string path = InputDialog.Show(this, "读取文件", "请输入文件路径:", "C:\\Windows\\System32\\drivers\\etc\\hosts");
@@ -347,7 +347,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             string path = InputDialog.Show(this, "写入文件", "请输入文件路径:", "C:\\temp\\test.txt");
@@ -383,11 +383,11 @@ namespace WinRemoteSharp
 
                 ConfigManager.Save(_config);
                 AddLog("Configuration saved");
-                MessageBox.Show("配置已保存", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("配置已保存", "成功", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"保存失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"保存失败: {ex.Message}", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
 
@@ -507,7 +507,7 @@ namespace WinRemoteSharp
             if (Directory.Exists(logDir))
                 Process.Start("explorer.exe", logDir);
             else
-                MessageBox.Show($"日志目录不存在: {logDir}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show($"日志目录不存在: {logDir}", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
 
         private void RefreshFullLogs()
@@ -521,7 +521,7 @@ namespace WinRemoteSharp
 
         private void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("当前已是最新版本 v1.2.0", "检查更新", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show("当前已是最新版本 v1.2.0", "检查更新", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
 
         private void BtnOpenGitHub_Click(object sender, RoutedEventArgs e)
@@ -542,7 +542,7 @@ namespace WinRemoteSharp
         {
             if (_agent == null || !_agent.IsConnected())
             {
-                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("请先连接服务器", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
             string cmd = TxtTestCommand.Text.Trim();

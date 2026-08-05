@@ -20,6 +20,17 @@ namespace WinRemoteSharp.Core
         public int LogLevel { get; set; } = 2;
         public int ConnectionTimeout { get; set; } = 15;
         public bool EnableServiceControl { get; set; } = true;
+        
+        // 新增：MainWindow.xaml.cs 用到的安全/高级设置
+        public int MaxOutputBytes { get; set; } = 65536;
+        public int MaxReadBytes { get; set; } = 1048576;
+        public string BlockedKeywords { get; set; } = "";
+        public bool AllowPowerShell { get; set; } = true;
+        public bool AllowWrite { get; set; } = false;
+        public bool AutoReconnect { get; set; } = true;
+        public bool StrictWhitelist { get; set; } = false;
+        public bool PasswordGuardEnabled { get; set; } = false;
+        public string PasswordGuard { get; set; } = "";
     }
 
     public static class ConfigManager
@@ -74,6 +85,11 @@ namespace WinRemoteSharp.Core
             if (string.IsNullOrEmpty(cfg.ServiceName)) cfg.ServiceName = "WinRemoteAgent";
             if (string.IsNullOrEmpty(cfg.LogPath)) cfg.LogPath = "logs";
             if (cfg.LogLevel < 0 || cfg.LogLevel > 5) cfg.LogLevel = 2;
+            
+            // 新增属性的默认值
+            if (cfg.MaxOutputBytes <= 0) cfg.MaxOutputBytes = 65536;
+            if (cfg.MaxReadBytes <= 0) cfg.MaxReadBytes = 1048576;
+            if (cfg.BlockedKeywords == null) cfg.BlockedKeywords = "";
         }
     }
 }

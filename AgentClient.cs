@@ -116,7 +116,7 @@ namespace WinRemoteSharp.Core
 
         public event Action<string> OnLog;
         public event Action<bool> OnConnectionChanged;
-        public event Action<string> OnStatusMessage;
+        // public event Action<string> OnStatusMessage; // 暂未使用，保留以备扩展
 
         public AgentClient(Config config)
         {
@@ -652,7 +652,7 @@ namespace WinRemoteSharp.Core
                 ["user"] = Environment.UserName,
                 ["cpu_count"] = Environment.ProcessorCount,
                 ["dotnet"] = Environment.Version.ToString(),
-                ["uptime"] = (DateTime.Now - Process.GetCurrentProcess().StartTime).ToString(),
+                ["uptime"] = (DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).ToString(),
                 ["agent_version"] = "1.2.0-csharp",
                 ["agent_platform"] = "windows-csharp"
             };
