@@ -79,23 +79,23 @@ namespace WinRemoteSharp
 
             // 连接/断开
             var connectItem = new ToolStripMenuItem("连接服务器");
-            connectItem.Click += (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnConnect_Click(null, null));
+            connectItem.Click += (s, e) => _mainWindow.TrayConnect();
             _contextMenu.Items.Add(connectItem);
 
             var disconnectItem = new ToolStripMenuItem("断开连接");
-            disconnectItem.Click += (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnDisconnect_Click(null, null));
+            disconnectItem.Click += (s, e) => _mainWindow.TrayDisconnect();
             _contextMenu.Items.Add(disconnectItem);
 
             _contextMenu.Items.Add(new ToolStripSeparator());
 
             // 服务管理
             var serviceMenu = new ToolStripMenuItem("服务管理");
-            serviceMenu.DropDownItems.Add("安装服务", null, (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnInstallService_Click(null, null)));
-            serviceMenu.DropDownItems.Add("卸载服务", null, (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnUninstallService_Click(null, null)));
+            serviceMenu.DropDownItems.Add("安装服务", null, (s, e) => _mainWindow.TrayInstallService());
+            serviceMenu.DropDownItems.Add("卸载服务", null, (s, e) => _mainWindow.TrayUninstallService());
             serviceMenu.DropDownItems.Add(new ToolStripSeparator());
-            serviceMenu.DropDownItems.Add("启动服务", null, (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnStartService_Click(null, null)));
-            serviceMenu.DropDownItems.Add("停止服务", null, (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnStopService_Click(null, null)));
-            serviceMenu.DropDownItems.Add("查看状态", null, (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnServiceStatus_Click(null, null)));
+            serviceMenu.DropDownItems.Add("启动服务", null, (s, e) => _mainWindow.TrayStartService());
+            serviceMenu.DropDownItems.Add("停止服务", null, (s, e) => _mainWindow.TrayStopService());
+            serviceMenu.DropDownItems.Add("查看状态", null, (s, e) => _mainWindow.TrayServiceStatus());
             _contextMenu.Items.Add(serviceMenu);
 
             _contextMenu.Items.Add(new ToolStripSeparator());
@@ -111,8 +111,20 @@ namespace WinRemoteSharp
 
             // 关于
             var aboutItem = new ToolStripMenuItem("关于");
-            aboutItem.Click += (s, e) => _mainWindow.Dispatcher.Invoke(() => _mainWindow.BtnCheckUpdate_Click(null, null));
+            aboutItem.Click += (s, e) => _mainWindow.TrayCheckUpdate();
             _contextMenu.Items.Add(aboutItem);
+
+            // 刷新日志
+            var refreshLogsItem = new ToolStripMenuItem("刷新日志");
+            refreshLogsItem.Click += (s, e) => _mainWindow.TrayRefreshLogs();
+            _contextMenu.Items.Add(refreshLogsItem);
+
+            // 打开日志目录
+            var openLogDirItem = new ToolStripMenuItem("打开日志目录");
+            openLogDirItem.Click += (s, e) => _mainWindow.TrayOpenLogDir();
+            _contextMenu.Items.Add(openLogDirItem);
+
+            _contextMenu.Items.Add(new ToolStripSeparator());
 
             // 退出
             var exitItem = new ToolStripMenuItem("退出");
@@ -141,7 +153,7 @@ namespace WinRemoteSharp
         {
             _mainWindow.Dispatcher.Invoke(() =>
             {
-                string status = _mainWindow._isConnected ? "已连接" : "未连接";
+                string status = _mainWindow.IsConnected ? "已连接" : "未连接";
                 _notifyIcon.Text = $"WinRemote Agent - {status}";
             });
         }
@@ -198,7 +210,7 @@ namespace WinRemoteSharp
             _mainWindow.Dispatcher.Invoke(() =>
             {
                 _mainWindow._closingToTray = false; // 标记为真正退出
-                Application.Current.Shutdown();
+                System.Windows.Application.Current.Shutdown();
             });
         }
 

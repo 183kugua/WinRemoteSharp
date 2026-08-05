@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using WinRemoteSharp.Core;
 
 namespace WinRemoteSharp
@@ -16,6 +17,8 @@ namespace WinRemoteSharp
         private bool _isConnected = false;
         private TrayManager _trayManager;
         public bool _closingToTray = true; // true = 最小化到托盘，false = 真正退出
+
+        public bool IsConnected => _isConnected;
 
         public MainWindow()
         {
@@ -56,7 +59,7 @@ namespace WinRemoteSharp
                 // 最小化到托盘而不是退出
                 e.Cancel = true;
                 Hide();
-                _trayManager?.ShowBalloonTip("WinRemote Agent", "已最小化到系统托盘，双击图标可显示窗口", ToolTipIcon.Info);
+                _trayManager?.ShowBalloonTip("WinRemote Agent", "已最小化到系统托盘，双击图标可显示窗口", System.Windows.Forms.ToolTipIcon.Info);
             }
             else
             {
@@ -75,24 +78,36 @@ namespace WinRemoteSharp
             TxtHeartbeat.Text = _config.HeartbeatInterval.ToString();
             TxtScreenshotQuality.Text = _config.ScreenshotQuality.ToString();
             TxtWhitelist.Text = _config.AllowedIPs;
+            TxtToken.Password = _config.Token ?? "";
+            TxtMaxOutput.Text = _config.MaxOutputBytes.ToString();
+            TxtMaxReadBytes.Text = _config.MaxReadBytes.ToString();
+            TxtBlacklist.Text = _config.BlockedKeywords;
+            ChkAllowPowershell.IsChecked = _config.AllowPowerShell;
+            ChkAllowWrite.IsChecked = _config.AllowWrite;
+            ChkAutoReconnect.IsChecked = _config.AutoReconnect;
+            ChkStrictWhitelist.IsChecked = _config.StrictWhitelist;
+            ChkPasswordGuard.IsChecked = _config.PasswordGuardEnabled;
+            TxtPasswordGuard.Password = _config.PasswordGuard ?? "";
         }
 
         private void UpdateFooterTime()
         {
-            // FooterTime - 未在 XAML 中定义，暂时跳过
+            StatusMessage.Text = $"就绪 · {DateTime.Now:HH:mm:ss}";
         }
 
-        private void AddLog(string msg)
+        public void AddLog(string msg)
         {
             string ts = DateTime.Now.ToString("HH:mm:ss");
             Dispatcher.Invoke(() =>
             {
                 TxtLog.Text += $"[{ts}] {msg}\n";
-                LogStatusText.Text = msg;
+                TxtLog.ScrollToEnd();
+                if (LogStatusText != null)
+                    LogStatusText.Text = msg;
             });
         }
 
-        private void SetConnectionState(bool connected)
+        public void SetConnectionState(bool connected)
         {
             _isConnected = connected;
             Dispatcher.Invoke(() =>
@@ -103,7 +118,8 @@ namespace WinRemoteSharp
                     StatusText.Text = "已连接";
                     StatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
                     // 开始呼吸动画
-                    StatusDot.BeginStoryboard((Storyboard)FindResource("StatusDotPulse"));
+                    if (FindResource("StatusDotPulse") is Storyboard pulse)
+                        StatusDot.BeginStoryboard(pulse);
                 }
                 else
                 {
@@ -111,13 +127,64 @@ namespace WinRemoteSharp
                     StatusText.Text = "未连接";
                     StatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
                     // 停止所有动画并恢复正常大小
-                    StatusDot.BeginStoryboard(new Storyboard()); // 停止当前故事板
+                    StatusDot.BeginStoryboard(new Storyboard());
                     StatusDot.Width = 12;
                     StatusDot.Height = 12;
                 }
                 // 同步更新托盘提示
                 _trayManager?.UpdateConnectionStatus(connected);
             });
+        }
+
+        // ===== Public methods for TrayManager =====
+        public void TrayConnect()
+        {
+            Dispatcher.Invoke(() => BtnConnect_Click(this, new RoutedEventArgs()));
+        }
+
+        public void TrayDisconnect()
+        {
+            Dispatcher.Invoke(() => BtnDisconnect_Click(this, new RoutedEventArgs()));
+        }
+
+        public void TrayInstallService()
+        {
+            Dispatcher.Invoke(() => BtnSvcInstall_Click(this, new RoutedEventArgs()));
+        }
+
+        public void TrayUninstallService()
+        {
+            Dispatcher.Invoke(() => BtnSvcUninstall_Click(this, new RoutedEventArgs()));
+        }
+
+        public void TrayStartService()
+        {
+            Dispatcher.Invoke(() => BtnSvcStart_Click(this, new RoutedEventArgs()));
+        }
+
+        public void TrayStopService()
+        {
+            Dispatcher.Invoke(() => BtnSvcStop_Click(this, new RoutedEventArgs()));
+        }
+
+        public void TrayServiceStatus()
+        {
+            Dispatcher.Invoke(() => RefreshServiceStatus());
+        }
+
+        public void TrayRefreshLogs()
+        {
+            Dispatcher.Invoke(() => RefreshFullLogs());
+        }
+
+        public void TrayOpenLogDir()
+        {
+            Dispatcher.Invoke(() => BtnOpenLogDir_Click(this, new RoutedEventArgs()));
+        }
+
+        public void TrayCheckUpdate()
+        {
+            Dispatcher.Invoke(() => BtnCheckUpdate_Click(this, new RoutedEventArgs()));
         }
 
         // ===== Button Handlers =====
@@ -194,6 +261,103 @@ namespace WinRemoteSharp
             TxtLog.Text = "";
         }
 
+        // ===== Missing button handlers from XAML =====
+        private void BtnShell_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            // Open command dialog
+            string cmd = InputDialog.Show(this, "执行命令", "请输入要执行的命令:", "ipconfig");
+            if (!string.IsNullOrEmpty(cmd))
+            {
+                AddLog($"Executing: {cmd}");
+            }
+        }
+
+        private void BtnPowershell_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string cmd = InputDialog.Show(this, "PowerShell", "请输入 PowerShell 命令:", "Get-Process");
+            if (!string.IsNullOrEmpty(cmd))
+            {
+                AddLog($"PowerShell: {cmd}");
+            }
+        }
+
+        private void BtnKeypress_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string key = InputDialog.Show(this, "模拟按键", "请输入按键名:", "enter");
+            if (!string.IsNullOrEmpty(key))
+            {
+                AddLog($"Key press: {key}");
+            }
+        }
+
+        private void BtnMouse_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            AddLog("Mouse operation requested...");
+        }
+
+        private void BtnOpen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string path = InputDialog.Show(this, "打开程序", "请输入程序路径:", "notepad.exe");
+            if (!string.IsNullOrEmpty(path))
+            {
+                AddLog($"Open: {path}");
+            }
+        }
+
+        private void BtnReadFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string path = InputDialog.Show(this, "读取文件", "请输入文件路径:", "C:\\Windows\\System32\\drivers\\etc\\hosts");
+            if (!string.IsNullOrEmpty(path))
+            {
+                AddLog($"Read file: {path}");
+            }
+        }
+
+        private void BtnWriteFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string path = InputDialog.Show(this, "写入文件", "请输入文件路径:", "C:\\temp\\test.txt");
+            if (!string.IsNullOrEmpty(path))
+            {
+                string content = InputDialog.Show(this, "写入内容", "请输入要写入的内容:", "Hello WinRemote!");
+                AddLog($"Write file: {path}");
+            }
+        }
+
         // ===== Settings Tab =====
 
         private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)
@@ -206,6 +370,16 @@ namespace WinRemoteSharp
                 _config.ReconnectInterval = int.Parse(TxtHeartbeat.Text);
                 _config.ScreenshotQuality = int.Parse(TxtScreenshotQuality.Text);
                 _config.AllowedIPs = TxtWhitelist.Text.Trim();
+                _config.Token = TxtToken.Password;
+                _config.MaxOutputBytes = int.Parse(TxtMaxOutput.Text);
+                _config.MaxReadBytes = int.Parse(TxtMaxReadBytes.Text);
+                _config.BlockedKeywords = TxtBlacklist.Text;
+                _config.AllowPowerShell = ChkAllowPowershell.IsChecked == true;
+                _config.AllowWrite = ChkAllowWrite.IsChecked == true;
+                _config.AutoReconnect = ChkAutoReconnect.IsChecked == true;
+                _config.StrictWhitelist = ChkStrictWhitelist.IsChecked == true;
+                _config.PasswordGuardEnabled = ChkPasswordGuard.IsChecked == true;
+                _config.PasswordGuard = TxtPasswordGuard.Password;
 
                 ConfigManager.Save(_config);
                 AddLog("Configuration saved");
@@ -219,7 +393,7 @@ namespace WinRemoteSharp
 
         // ===== Service Tab =====
 
-        private void BtnInstallService_Click(object sender, RoutedEventArgs e)
+        private void BtnSvcInstall_Click(object sender, RoutedEventArgs e)
         {
             var sm = new ServiceManager();
             AddLog("Installing service...");
@@ -228,7 +402,7 @@ namespace WinRemoteSharp
             RefreshServiceStatus();
         }
 
-        private void BtnUninstallService_Click(object sender, RoutedEventArgs e)
+        private void BtnSvcUninstall_Click(object sender, RoutedEventArgs e)
         {
             var sm = new ServiceManager();
             AddLog("Uninstalling service...");
@@ -237,7 +411,7 @@ namespace WinRemoteSharp
             RefreshServiceStatus();
         }
 
-        private void BtnStartService_Click(object sender, RoutedEventArgs e)
+        private void BtnSvcStart_Click(object sender, RoutedEventArgs e)
         {
             var sm = new ServiceManager();
             AddLog("Starting service...");
@@ -246,12 +420,23 @@ namespace WinRemoteSharp
             RefreshServiceStatus();
         }
 
-        private void BtnStopService_Click(object sender, RoutedEventArgs e)
+        private void BtnSvcStop_Click(object sender, RoutedEventArgs e)
         {
             var sm = new ServiceManager();
             AddLog("Stopping service...");
             bool ok = sm.Stop();
             AddLog(ok ? "Service stopped" : "Service stop failed");
+            RefreshServiceStatus();
+        }
+
+        private void BtnSvcRestart_Click(object sender, RoutedEventArgs e)
+        {
+            var sm = new ServiceManager();
+            AddLog("Restarting service...");
+            sm.Stop();
+            System.Threading.Thread.Sleep(2000);
+            bool ok = sm.Start();
+            AddLog(ok ? "Service restarted" : "Service restart failed");
             RefreshServiceStatus();
         }
 
@@ -283,11 +468,35 @@ namespace WinRemoteSharp
             });
         }
 
-        // ===== Logs Tab =====
+        private void BtnDownloadNssm_Click(object sender, RoutedEventArgs e)
+        {
+            AddLog("Downloading NSSM...");
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "https://nssm.cc/download",
+                    UseShellExecute = true
+                });
+            }
+            catch { }
+        }
 
-        private void BtnRefreshLogs_Click(object sender, RoutedEventArgs e)
+        private void BtnViewLogs_Click(object sender, RoutedEventArgs e)
         {
             RefreshFullLogs();
+        }
+
+        // ===== Logs Tab =====
+
+        private void BtnRefreshLog_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshFullLogs();
+        }
+
+        private void BtnClearServiceLog_Click(object sender, RoutedEventArgs e)
+        {
+            TxtFullLog.Text = "";
         }
 
         private void BtnOpenLogDir_Click(object sender, RoutedEventArgs e)
@@ -326,6 +535,20 @@ namespace WinRemoteSharp
                 });
             }
             catch { }
+        }
+
+        // ===== Tools Tab =====
+        private void BtnSendTest_Click(object sender, RoutedEventArgs e)
+        {
+            if (_agent == null || !_agent.IsConnected())
+            {
+                MessageBox.Show("请先连接服务器", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string cmd = TxtTestCommand.Text.Trim();
+            if (string.IsNullOrEmpty(cmd)) return;
+            AddLog($"Test command: {cmd}");
+            // 这里可以添加实际发送测试指令的逻辑
         }
     }
 }

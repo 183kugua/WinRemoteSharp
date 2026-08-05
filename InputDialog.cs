@@ -8,6 +8,14 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using WpfButton = System.Windows.Controls.Button;
 using WpfTextBox = System.Windows.Controls.TextBox;
+using WpfOrientation = System.Windows.Controls.Orientation;
+using WpfImage = System.Windows.Controls.Image;
+using WpfBrushes = System.Windows.Media.Brushes;
+using WpfApplication = System.Windows.Application;
+using WpfCursors = System.Windows.Input.Cursors;
+using WpfPoint = System.Windows.Point;
+using WpfHorizontalAlignment = System.Windows.HorizontalAlignment;
+using WpfVerticalAlignment = System.Windows.VerticalAlignment;
 
 namespace WinRemoteSharp
 {
@@ -30,7 +38,7 @@ namespace WinRemoteSharp
             // 窗口基础设置 - 无边框、圆角、居中、置顶
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
-            Background = Brushes.Transparent;
+            Background = WpfBrushes.Transparent;
             Width = 440;
             Height = 220;
             MinWidth = 400;
@@ -54,9 +62,9 @@ namespace WinRemoteSharp
             // 主容器 - 带阴影的圆角边框
             _mainBorder = new Border
             {
-                Background = (SolidColorBrush)Application.Current.Resources["BgLightBrush"],
+                Background = (SolidColorBrush)WpfApplication.Current.Resources["BgLightBrush"],
                 CornerRadius = new CornerRadius(16),
-                BorderBrush = (SolidColorBrush)Application.Current.Resources["CardBorderBrush"],
+                BorderBrush = (SolidColorBrush)WpfApplication.Current.Resources["CardBorderBrush"],
                 BorderThickness = new Thickness(1.5),
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
@@ -76,15 +84,15 @@ namespace WinRemoteSharp
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });      // 按钮区
 
             // === 第0行：图标 + 标题 ===
-            var headerPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+            var headerPanel = new StackPanel { Orientation = WpfOrientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
             
             // 自定义图标
-            var iconImage = new Image
+            var iconImage = new WpfImage
             {
                 Width = 28,
                 Height = 28,
                 Margin = new Thickness(0, 0, 10, 0),
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = WpfVerticalAlignment.Center
             };
             try
             {
@@ -99,8 +107,8 @@ namespace WinRemoteSharp
                 Text = title,
                 FontSize = 16,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = (SolidColorBrush)Application.Current.Resources["TextPrimaryBrush"],
-                VerticalAlignment = VerticalAlignment.Center
+                Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
+                VerticalAlignment = WpfVerticalAlignment.Center
             };
             headerPanel.Children.Add(titleBlock);
             Grid.SetRow(headerPanel, 0);
@@ -110,7 +118,7 @@ namespace WinRemoteSharp
             var promptBlock = new TextBlock
             {
                 Text = prompt,
-                Foreground = (SolidColorBrush)Application.Current.Resources["TextPrimaryBrush"],
+                Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
                 FontSize = 13,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 16),
@@ -122,9 +130,9 @@ namespace WinRemoteSharp
             // === 第2行：输入框 ===
             var inputContainer = new Border
             {
-                Background = (SolidColorBrush)Application.Current.Resources["BgCardBrush"],
+                Background = (SolidColorBrush)WpfApplication.Current.Resources["BgCardBrush"],
                 CornerRadius = new CornerRadius(8),
-                BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderLightBrush"],
+                BorderBrush = (SolidColorBrush)WpfApplication.Current.Resources["BorderLightBrush"],
                 BorderThickness = new Thickness(1.5),
                 Padding = new Thickness(0)
             };
@@ -136,27 +144,27 @@ namespace WinRemoteSharp
                     Password = defaultValue,
                     Padding = new Thickness(14, 10, 14, 10),
                     BorderThickness = new Thickness(0),
-                    Background = Brushes.Transparent,
-                    Foreground = (SolidColorBrush)Application.Current.Resources["TextPrimaryBrush"],
+                    Background = WpfBrushes.Transparent,
+                    Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
                     FontSize = 14,
-                    VerticalContentAlignment = VerticalAlignment.Center,
-                    CaretBrush = (SolidColorBrush)Application.Current.Resources["MintMainBrush"]
+                    VerticalContentAlignment = WpfVerticalAlignment.Center,
+                    CaretBrush = (SolidColorBrush)WpfApplication.Current.Resources["MintMainBrush"]
                 };
                 _passwordBox.Focus();
                 inputContainer.Child = _passwordBox;
             }
             else
             {
-                _textBox = new TextBox
+                _textBox = new WpfTextBox
                 {
                     Text = defaultValue,
                     Padding = new Thickness(14, 10, 14, 10),
                     BorderThickness = new Thickness(0),
-                    Background = Brushes.Transparent,
-                    Foreground = (SolidColorBrush)Application.Current.Resources["TextPrimaryBrush"],
+                    Background = WpfBrushes.Transparent,
+                    Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
                     FontSize = 14,
-                    VerticalContentAlignment = VerticalAlignment.Center,
-                    CaretBrush = (SolidColorBrush)Application.Current.Resources["MintMainBrush"]
+                    VerticalContentAlignment = WpfVerticalAlignment.Center,
+                    CaretBrush = (SolidColorBrush)WpfApplication.Current.Resources["MintMainBrush"]
                 };
                 _textBox.Focus();
                 _textBox.SelectAll();
@@ -169,8 +177,8 @@ namespace WinRemoteSharp
             // === 第3行：按钮区 ===
             var buttonPanel = new StackPanel
             {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right,
+                Orientation = WpfOrientation.Horizontal,
+                HorizontalAlignment = WpfHorizontalAlignment.Right,
                 Margin = new Thickness(0, 16, 0, 0)
             };
 
@@ -222,74 +230,55 @@ namespace WinRemoteSharp
                 Padding = new Thickness(24, 10, 24, 10),
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = (SolidColorBrush)Application.Current.Resources["TextLightBrush"],
-                Background = (SolidColorBrush)Application.Current.Resources[brushKey],
+                Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextLightBrush"],
+                Background = (SolidColorBrush)WpfApplication.Current.Resources[brushKey],
                 BorderThickness = new Thickness(0),
-                Cursor = Cursors.Hand,
+                Cursor = WpfCursors.Hand,
                 MinWidth = 88
             };
 
-            // 圆角模板
-            btn.Template = new ControlTemplate(typeof(WpfButton))
-            {
-                VisualTree = new FrameworkElementFactory(typeof(Border), "Bd")
-                {
-                    Properties =
-                    {
-                        { Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty) },
-                        { Border.CornerRadiusProperty, new CornerRadius(8) },
-                        { Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty) },
-                        { Border.SnapsToDevicePixelsProperty, true }
-                    },
-                    Children = { new FrameworkElementFactory(typeof(ContentPresenter))
-                    {
-                        Properties =
-                        {
-                            { ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center },
-                            { ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center },
-                            { ContentPresenter.RecognizesAccessKeyProperty, true }
-                        }
-                    } }
-                }
-            };
-
-            // 悬停/按下触发器
-            var triggers = new TriggerCollection();
+            // 使用 Style + ControlTemplate 代替旧的 FrameworkElementFactory
+            var template = new ControlTemplate(typeof(WpfButton));
+            var borderFactory = new FrameworkElementFactory(typeof(Border), "Bd");
+            borderFactory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(WpfButton.BackgroundProperty));
+            borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+            borderFactory.SetValue(Border.PaddingProperty, new TemplateBindingExtension(WpfButton.PaddingProperty));
+            borderFactory.SetValue(Border.SnapsToDevicePixelsProperty, true);
             
+            var presenterFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+            presenterFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, WpfHorizontalAlignment.Center);
+            presenterFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, WpfVerticalAlignment.Center);
+            presenterFactory.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
+            borderFactory.AppendChild(presenterFactory);
+            
+            template.VisualTree = borderFactory;
+
+            // 触发器
             // IsMouseOver
             var mouseOverTrigger = new Trigger { Property = WpfButton.IsMouseOverProperty, Value = true };
-            mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, (SolidColorBrush)Application.Current.Resources[hoverBrushKey]));
-            triggers.Add(mouseOverTrigger);
+            mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, (SolidColorBrush)WpfApplication.Current.Resources[hoverBrushKey]));
+            template.Triggers.Add(mouseOverTrigger);
 
             // IsPressed
             var pressedTrigger = new Trigger { Property = WpfButton.IsPressedProperty, Value = true };
             pressedTrigger.Setters.Add(new Setter(WpfButton.OpacityProperty, 0.9));
-            pressedTrigger.EnterActions.Add(new BeginStoryboard
-            {
-                Storyboard = new Storyboard
-                {
-                    Children =
-                    {
-                        new DoubleAnimation(0.95, new Duration(TimeSpan.FromMilliseconds(80)))
-                        {
-                            TargetProperty = new PropertyPath("RenderTransform.(ScaleTransform.ScaleX)")
-                        },
-                        new DoubleAnimation(0.95, new Duration(TimeSpan.FromMilliseconds(80)))
-                        {
-                            TargetProperty = new PropertyPath("RenderTransform.(ScaleTransform.ScaleY)")
-                        }
-                    }
-                }
-            });
-            triggers.Add(pressedTrigger);
+            var pressStoryboard = new Storyboard();
+            var scaleXAnim = new DoubleAnimation(0.95, new Duration(TimeSpan.FromMilliseconds(80)));
+            Storyboard.SetTargetProperty(scaleXAnim, new PropertyPath("RenderTransform.(ScaleTransform.ScaleX)"));
+            var scaleYAnim = new DoubleAnimation(0.95, new Duration(TimeSpan.FromMilliseconds(80)));
+            Storyboard.SetTargetProperty(scaleYAnim, new PropertyPath("RenderTransform.(ScaleTransform.ScaleY)"));
+            pressStoryboard.Children.Add(scaleXAnim);
+            pressStoryboard.Children.Add(scaleYAnim);
+            pressedTrigger.EnterActions.Add(new BeginStoryboard { Storyboard = pressStoryboard });
+            template.Triggers.Add(pressedTrigger);
 
             // IsEnabled
             var disabledTrigger = new Trigger { Property = WpfButton.IsEnabledProperty, Value = false };
             disabledTrigger.Setters.Add(new Setter(WpfButton.OpacityProperty, 0.4));
-            triggers.Add(disabledTrigger);
+            template.Triggers.Add(disabledTrigger);
 
-            btn.Template.Triggers = triggers;
-            btn.RenderTransformOrigin = new Point(0.5, 0.5);
+            btn.Template = template;
+            btn.RenderTransformOrigin = new WpfPoint(0.5, 0.5);
             btn.RenderTransform = new ScaleTransform(1, 1);
 
             return btn;
@@ -299,7 +288,7 @@ namespace WinRemoteSharp
         {
             // 初始状态：透明 + 向下偏移 + 缩小
             Opacity = 0;
-            _mainBorder.RenderTransformOrigin = new Point(0.5, 0.5);
+            _mainBorder.RenderTransformOrigin = new WpfPoint(0.5, 0.5);
             _mainBorder.RenderTransform = new TransformGroup
             {
                 Children = new TransformCollection
