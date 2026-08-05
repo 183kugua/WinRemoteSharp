@@ -22,9 +22,30 @@ namespace WinRemoteSharp
 
         public MainWindow()
         {
-            InitializeComponent();
+            try
+            {
+                InitializeComponent();
+            }
+            catch (Exception ex)
+            {
+                LogCrash(ex, "MainWindow.InitializeComponent");
+                throw;
+            }
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
+        }
+
+        private void LogCrash(Exception ex, string where)
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup_crash.log");
+                File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{where}]
+{ex}
+
+");
+            }
+            catch { /* ignore */ }
         }
 
         public void SetTrayManager(TrayManager trayManager)
@@ -34,21 +55,29 @@ namespace WinRemoteSharp
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            _config = ConfigManager.Load("config.json");
-            ApplyConfigToUI();
-            UpdateFooterTime();
-            var timer = new System.Windows.Threading.DispatcherTimer
+            try
             {
-                Interval = TimeSpan.FromSeconds(1)
-            };
-            timer.Tick += (s, ev) => UpdateFooterTime();
-            timer.Start();
+                _config = ConfigManager.Load("config.json");
+                ApplyConfigToUI();
+                UpdateFooterTime();
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(1)
+                };
+                timer.Tick += (s, ev) => UpdateFooterTime();
+                timer.Start();
 
-            // 如果配置了开机自启且当前是最小化启动，检查是否需要自动连接
-            if (_config.AutoStart && !IsVisible)
+                // 如果配置了开机自启且当前是最小化启动，检查是否需要自动连接
+                if (_config.AutoStart && !IsVisible)
+                {
+                    AddLog("AutoStart enabled, attempting to connect...");
+                    // 这里可以添加自动连接逻辑
+                }
+            }
+            catch (Exception ex)
             {
-                AddLog("AutoStart enabled, attempting to connect...");
-                // 这里可以添加自动连接逻辑
+                LogCrash(ex, "MainWindow_Loaded");
+                throw;
             }
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows;
 
 namespace WinRemoteSharp
@@ -9,6 +10,11 @@ namespace WinRemoteSharp
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // 全局未捕获异常 -> 落地日志
+            AppDomain.CurrentDomain.UnhandledException += (s, args) => LogException(args.ExceptionObject as Exception, "AppDomain");
+            DispatcherUnhandledException += (s, args) => { LogException(args.Exception, "Dispatcher"); args.Handled = true; };
+            TaskScheduler.UnobservedTaskException += (s, args) => { LogException(args.Exception, "TaskScheduler"); args.SetObserved(); };
+
             base.OnStartup(e);
 
             // 检查命令行参数
@@ -42,6 +48,20 @@ namespace WinRemoteSharp
             {
                 mainWindow.Show();
             }
+        }
+
+        private void LogException(Exception ex, string source)
+        {
+            if (ex == null) return;
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup_crash.log");
+                File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]
+{ex}
+
+");
+            }
+            catch { /* ignore */ }
         }
 
         protected override void OnExit(ExitEventArgs e)
