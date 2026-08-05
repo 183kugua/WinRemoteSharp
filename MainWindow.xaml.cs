@@ -40,8 +40,8 @@ namespace WinRemoteSharp
             try
             {
                 string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup_crash.log");
-                File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{where}]
-{ex}
+                File.AppendAllText(path, "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] [" + where + "]
+" + ex + "
 
 ");
             }
