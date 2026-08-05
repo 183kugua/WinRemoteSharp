@@ -51,6 +51,7 @@
     <Compile Include="AgentClient.cs" />
     <Compile Include="ConfigManager.cs" />
     <Compile Include="ServiceManager.cs" />
+    <Compile Include="TrayManager.cs" />
   </ItemGroup>
 
   <ItemGroup>

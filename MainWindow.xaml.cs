@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -13,12 +14,19 @@ namespace WinRemoteSharp
         private AgentClient _agent;
         private Config _config;
         private bool _isConnected = false;
+        private TrayManager _trayManager;
+        public bool _closingToTray = true; // true = 最小化到托盘，false = 真正退出
 
         public MainWindow()
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
+        }
+
+        public void SetTrayManager(TrayManager trayManager)
+        {
+            _trayManager = trayManager;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -32,13 +40,31 @@ namespace WinRemoteSharp
             };
             timer.Tick += (s, ev) => UpdateFooterTime();
             timer.Start();
+
+            // 如果配置了开机自启且当前是最小化启动，检查是否需要自动连接
+            if (_config.AutoStart && !IsVisible)
+            {
+                AddLog("AutoStart enabled, attempting to connect...");
+                // 这里可以添加自动连接逻辑
+            }
         }
 
-        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
-            if (_agent != null && _agent.IsConnected())
+            if (_closingToTray)
             {
-                _agent.Disconnect();
+                // 最小化到托盘而不是退出
+                e.Cancel = true;
+                Hide();
+                _trayManager?.ShowBalloonTip("WinRemote Agent", "已最小化到系统托盘，双击图标可显示窗口", ToolTipIcon.Info);
+            }
+            else
+            {
+                // 真正退出：断开连接并清理
+                if (_agent != null && _agent.IsConnected())
+                {
+                    _agent.Disconnect();
+                }
             }
         }
 
@@ -47,41 +73,45 @@ namespace WinRemoteSharp
             TxtServerUrl.Text = _config.ServerUrl;
             TxtShellTimeout.Text = _config.ConnectionTimeout.ToString();
             TxtHeartbeat.Text = _config.HeartbeatInterval.ToString();
-            // TxtReconnect - 未在 XAML 中定义，暂时跳过
             TxtScreenshotQuality.Text = _config.ScreenshotQuality.ToString();
-            // TxtWidth / TxtHeight - 未在 XAML 中定义，暂时跳过
             TxtWhitelist.Text = _config.AllowedIPs;
         }
 
         private void UpdateFooterTime()
         {
             // FooterTime - 未在 XAML 中定义，暂时跳过
-            // FooterTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
         private void AddLog(string msg)
         {
             string ts = DateTime.Now.ToString("HH:mm:ss");
-            TxtLog.Text += $"[{ts}] {msg}\n";
-            LogStatusText.Text = msg;
-            // LogScroller - 未在 XAML 中定义，暂时跳过自动滚动
+            Dispatcher.Invoke(() =>
+            {
+                TxtLog.Text += $"[{ts}] {msg}\n";
+                LogStatusText.Text = msg;
+            });
         }
 
         private void SetConnectionState(bool connected)
         {
             _isConnected = connected;
-            if (connected)
+            Dispatcher.Invoke(() =>
             {
-                StatusDot.Fill = (SolidColorBrush)FindResource("StatusOnlineBrush");
-                StatusText.Text = "已连接";
-                StatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
-            }
-            else
-            {
-                StatusDot.Fill = (SolidColorBrush)FindResource("StatusOfflineBrush");
-                StatusText.Text = "未连接";
-                StatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
-            }
+                if (connected)
+                {
+                    StatusDot.Fill = (SolidColorBrush)FindResource("StatusOnlineBrush");
+                    StatusText.Text = "已连接";
+                    StatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
+                }
+                else
+                {
+                    StatusDot.Fill = (SolidColorBrush)FindResource("StatusOfflineBrush");
+                    StatusText.Text = "未连接";
+                    StatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
+                }
+                // 同步更新托盘提示
+                _trayManager?.UpdateConnectionStatus(connected);
+            });
         }
 
         // ===== Button Handlers =====
@@ -151,9 +181,6 @@ namespace WinRemoteSharp
                 return;
             }
             AddLog("Screenshot requested...");
-            // The agent handles this via WebSocket messages automatically
-            // This button is for manual testing - we send a screenshot request to ourselves
-            // In practice, screenshots are triggered by server commands
         }
 
         private void BtnClearLog_Click(object sender, RoutedEventArgs e)
@@ -172,9 +199,6 @@ namespace WinRemoteSharp
                 _config.HeartbeatInterval = int.Parse(TxtHeartbeat.Text);
                 _config.ReconnectInterval = int.Parse(TxtHeartbeat.Text);
                 _config.ScreenshotQuality = int.Parse(TxtScreenshotQuality.Text);
-                // 截图宽高使用默认值 (1920x1080)，界面无输入框
-                // _config.ScreenshotWidth = 1920;
-                // _config.ScreenshotHeight = 1080;
                 _config.AllowedIPs = TxtWhitelist.Text.Trim();
 
                 ConfigManager.Save(_config);
@@ -234,20 +258,23 @@ namespace WinRemoteSharp
         {
             var sm = new ServiceManager();
             string status = sm.GetStatus();
-            ServiceStatusText.Text = status;
-            switch (status)
+            Dispatcher.Invoke(() =>
             {
-                case "Running":
-                    ServiceStatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
-                    break;
-                case "Stopped":
-                    ServiceStatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
-                    break;
-                default:
-                    ServiceStatusText.Foreground = (SolidColorBrush)FindResource("TextSecondaryBrush");
-                    break;
-            }
-            TxtServiceLog.Text = sm.GetRecentLogs(50);
+                ServiceStatusText.Text = status;
+                switch (status)
+                {
+                    case "Running":
+                        ServiceStatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
+                        break;
+                    case "Stopped":
+                        ServiceStatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
+                        break;
+                    default:
+                        ServiceStatusText.Foreground = (SolidColorBrush)FindResource("TextSecondaryBrush");
+                        break;
+                }
+                TxtServiceLog.Text = sm.GetRecentLogs(50);
+            });
         }
 
         // ===== Logs Tab =====
@@ -272,7 +299,7 @@ namespace WinRemoteSharp
         {
             var sm = new ServiceManager();
             string logs = sm.GetRecentLogs(200);
-            TxtFullLog.Text = logs;
+            Dispatcher.Invoke(() => TxtFullLog.Text = logs);
         }
 
         // ===== About Tab =====
