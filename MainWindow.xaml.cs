@@ -102,12 +102,18 @@ namespace WinRemoteSharp
                     StatusDot.Fill = (SolidColorBrush)FindResource("StatusOnlineBrush");
                     StatusText.Text = "已连接";
                     StatusText.Foreground = (SolidColorBrush)FindResource("AccentGreenBrush");
+                    // 开始呼吸动画
+                    StatusDot.BeginStoryboard((Storyboard)FindResource("StatusDotPulse"));
                 }
                 else
                 {
                     StatusDot.Fill = (SolidColorBrush)FindResource("StatusOfflineBrush");
                     StatusText.Text = "未连接";
                     StatusText.Foreground = (SolidColorBrush)FindResource("AccentRedBrush");
+                    // 停止所有动画并恢复正常大小
+                    StatusDot.BeginStoryboard(new Storyboard()); // 停止当前故事板
+                    StatusDot.Width = 12;
+                    StatusDot.Height = 12;
                 }
                 // 同步更新托盘提示
                 _trayManager?.UpdateConnectionStatus(connected);

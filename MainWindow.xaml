@@ -26,7 +26,13 @@
                     <TextBlock Text="远程控制代理" FontSize="14" Foreground="#CCFFFFFF" Margin="8,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse x:Name="StatusDot" Width="12" Height="12" Fill="{StaticResource ErrorBrush}" Margin="0,0,8,0"/>
+                    <Ellipse x:Name="StatusDot" Width="12" Height="12" Fill="{StaticResource ErrorBrush}" Margin="0,0,8,0">
+                        <Ellipse.Triggers>
+                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                <BeginStoryboard Storyboard="{StaticResource StatusDotPulse}"/>
+                            </EventTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
                     <TextBlock x:Name="StatusText" Text="Agent 已停止" FontSize="13" Foreground="White"/>
                     <TextBlock Text="|" Foreground="#88FFFFFF" Margin="12,0"/>
                     <TextBlock Text="V1.2 中文版" FontSize="12" Foreground="#CCFFFFFF"/>
@@ -209,7 +215,13 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="服务状态：" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <Ellipse x:Name="ServiceDot" Width="10" Height="10" Fill="{StaticResource TextMutedBrush}" Margin="0,0,8,0"/>
+                                        <Ellipse x:Name="ServiceDot" Width="10" Height="10" Fill="{StaticResource TextMutedBrush}" Margin="0,0,8,0">
+                                            <Ellipse.Triggers>
+                                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                    <BeginStoryboard Storyboard="{StaticResource StatusDotPulse}"/>
+                                                </EventTrigger>
+                                            </Ellipse.Triggers>
+                                        </Ellipse>
                                         <TextBlock x:Name="ServiceStatusText" Text="未知" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Grid>
