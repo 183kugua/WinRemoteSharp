@@ -4,6 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>WinRemoteSharp</RootNamespace>
     <AssemblyName>WinRemoteAgent</AssemblyName>
 
@@ -79,8 +80,14 @@
     <Resource Include="Resources\DialogIcon.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- System.Drawing.Common for .NET 8 (required for Icon, Bitmap, etc.) -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
   <!--
-    NO PackageReference items - zero NuGet dependencies.
+    WinForms support enabled via <UseWindowsForms>true</UseWindowsForms>
+    No separate PackageReference needed for System.Windows.Forms
     All functionality uses .NET 8 BCL + WPF built-in assemblies:
     - System.Net.WebSockets.ClientWebSocket (BCL)
     - System.Text.Json (BCL, part of net8.0)
