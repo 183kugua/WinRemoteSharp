@@ -219,7 +219,6 @@
         <SolidColorBrush x:Key="BorderLightBrush" Color="{StaticResource CardBorder}"/>
         <SolidColorBrush x:Key="TextLightBrush" Color="#FFFFFFFF"/>
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextMuted}"/>
-        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
         <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource CardBorder}"/>
 
         <!-- 标题栏渐变 -->
@@ -727,16 +726,5 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
-=======
-        <!-- ========== InputDialog 兼容资源键 ========== -->
-        <SolidColorBrush x:Key="BgLightBrush" Color="{StaticResource MintWhite}"/>
-        <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource BorderSoft}"/>
-        <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextDark}"/>
-        <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource SurfaceCard}"/>
-        <SolidColorBrush x:Key="BorderLightBrush" Color="{StaticResource BorderSoft}"/>
-        <SolidColorBrush x:Key="TextLightBrush" Color="White"/>
-        <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextMuted}"/>
-        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
->>>>>>> 598c82d (fix: 全面修复客户端代码 Bug)
     </Application.Resources>
 </Application>
