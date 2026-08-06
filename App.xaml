@@ -584,6 +584,7 @@
             <Setter Property="Margin" Value="0,4"/>
         </Style>
 
+<<<<<<< HEAD
         <!-- TabControl (增强版：内容切换动画) -->
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
@@ -726,5 +727,16 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
+=======
+        <!-- ========== InputDialog 兼容资源键 ========== -->
+        <SolidColorBrush x:Key="BgLightBrush" Color="{StaticResource MintWhite}"/>
+        <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource BorderSoft}"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextDark}"/>
+        <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource SurfaceCard}"/>
+        <SolidColorBrush x:Key="BorderLightBrush" Color="{StaticResource BorderSoft}"/>
+        <SolidColorBrush x:Key="TextLightBrush" Color="White"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextMuted}"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
+>>>>>>> 598c82d (fix: 全面修复客户端代码 Bug)
     </Application.Resources>
 </Application>
