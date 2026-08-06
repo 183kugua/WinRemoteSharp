@@ -52,12 +52,18 @@ namespace WinRemoteSharp
         {
             try
             {
-                // 尝试从资源加载图标
+                // 尝试从资源加载图标 - 使用 DialogIcon.png
                 var assembly = Assembly.GetExecutingAssembly();
-                using (var stream = assembly.GetManifestResourceStream("WinRemoteSharp.App.ico"))
+                using (var stream = assembly.GetManifestResourceStream("WinRemoteSharp.Resources.DialogIcon.png"))
                 {
                     if (stream != null)
-                        return new Icon(stream);
+                    {
+                        // 将 PNG 转换为 Icon
+                        using (var bitmap = new System.Drawing.Bitmap(stream))
+                        {
+                            return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
+                        }
+                    }
                 }
             }
             catch { }

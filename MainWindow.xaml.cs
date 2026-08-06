@@ -47,11 +47,6 @@ namespace WinRemoteSharp
             catch { /* ignore */ }
         }
 
-        public void SetTrayManager(TrayManager trayManager)
-        {
-            _trayManager = trayManager;
-        }
-
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             try
@@ -65,6 +60,10 @@ namespace WinRemoteSharp
                 };
                 timer.Tick += (s, ev) => UpdateFooterTime();
                 timer.Start();
+
+                // 初始化系统托盘
+                _trayManager = new TrayManager(this);
+                _trayManager.UpdateConnectionStatus(_isConnected);
 
                 // 如果配置了开机自启且当前是最小化启动，检查是否需要自动连接
                 if (_config.AutoStart && !IsVisible)
@@ -96,6 +95,7 @@ namespace WinRemoteSharp
                 {
                     _agent.Disconnect();
                 }
+                _trayManager?.Dispose();
             }
         }
 
@@ -167,6 +167,7 @@ namespace WinRemoteSharp
             StatusText.Text = connected ? "Agent 运行中" : "Agent 已停止";
             BtnConnect.IsEnabled = !connected;
             BtnDisconnect.IsEnabled = connected;
+            _trayManager?.UpdateConnectionStatus(connected);
         }
 
         private void BtnShell_Click(object sender, RoutedEventArgs e)
@@ -255,6 +256,98 @@ namespace WinRemoteSharp
             {
                 AddLog("保存失败：" + ex.Message);
             }
+        }
+
+        // ========== 托盘菜单调用的方法 ==========
+
+        public void TrayConnect()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (!_isConnected)
+                {
+                    BtnConnect_Click(this, new RoutedEventArgs());
+                }
+            });
+        }
+
+        public void TrayDisconnect()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (_isConnected)
+                {
+                    BtnDisconnect_Click(this, new RoutedEventArgs());
+                }
+            });
+        }
+
+        public void TrayInstallService()
+        {
+            Dispatcher.Invoke(() => RunNssm("install"));
+        }
+
+        public void TrayUninstallService()
+        {
+            Dispatcher.Invoke(() => RunNssm("uninstall"));
+        }
+
+        public void TrayStartService()
+        {
+            Dispatcher.Invoke(() => RunNssm("start"));
+        }
+
+        public void TrayStopService()
+        {
+            Dispatcher.Invoke(() => RunNssm("stop"));
+        }
+
+        public void TrayServiceStatus()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                RefreshServiceStatus();
+                _trayManager?.ShowBalloonTip("服务状态", ServiceStatusText.Text, System.Windows.Forms.ToolTipIcon.Info);
+            });
+        }
+
+        public void TrayCheckUpdate()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _trayManager?.ShowBalloonTip("关于", "WinRemote Agent V1.2\nC# WPF 中文版\n与 AstrBot astrbot_plugin_winremote 协议兼容", System.Windows.Forms.ToolTipIcon.Info);
+            });
+        }
+
+        public void TrayRefreshLogs()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                var sm = new ServiceManager("config.json");
+                TxtFullLog.Text = sm.GetRecentLogs(200);
+                LogStatusText.Text = "已刷新 · " + DateTime.Now.ToString("HH:mm:ss");
+                _trayManager?.ShowBalloonTip("日志已刷新", "已获取最新 200 行服务日志", System.Windows.Forms.ToolTipIcon.Info);
+            });
+        }
+
+        public void TrayOpenLogDir()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                if (Directory.Exists(logDir))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = logDir,
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    _trayManager?.ShowBalloonTip("日志目录", "日志目录不存在：" + logDir, System.Windows.Forms.ToolTipIcon.Warning);
+                }
+            });
         }
 
         private void BtnSvcStart_Click(object sender, RoutedEventArgs e) { RunNssm("start"); }
