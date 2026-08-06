@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Media.Imaging;
 using WinRemoteSharp.Core;
 
 namespace WinRemoteSharp.Core
