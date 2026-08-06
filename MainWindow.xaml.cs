@@ -115,6 +115,7 @@ namespace WinRemoteSharp
         {
             _ = _agent?.DisconnectAsync();
             _trayMgr?.Dispose();
+            _svcMgr?.Dispose();
         }
 
         private void MainWindow_StateChanged(object? sender, EventArgs e)
@@ -459,7 +460,17 @@ namespace WinRemoteSharp
         {
             SyncUIToConfig();
             _cfgMgr.Save();
-            AddLog("💾 设置已保存");
+            
+            // 如果 Agent 正在运行，更新其配置
+            if (_agent != null)
+            {
+                _agent.UpdateConfig(_cfgMgr.Config);
+                AddLog("💾 设置已保存并应用到运行中的 Agent");
+            }
+            else
+            {
+                AddLog("💾 设置已保存");
+            }
             MessageBox.Show("设置已保存！", "WinRemote", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 

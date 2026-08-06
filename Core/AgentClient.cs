@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -13,13 +14,14 @@ using System.Runtime.InteropServices;
 
 namespace WinRemoteSharp.Core
 {
-    public class AgentClient
+    public class AgentClient : IDisposable
     {
-        private readonly AgentConfig _config;
+        private AgentConfig _config;
         private ClientWebSocket? _ws;
         private CancellationTokenSource? _cts;
         private bool _running;
         private bool _connected;
+        private bool _disposed;
 
         // 事件
         public event Action<string>? OnLog;
@@ -34,13 +36,28 @@ namespace WinRemoteSharp.Core
 
         public bool IsConnected => _connected && _ws?.State == WebSocketState.Open;
 
+        public AgentConfig CurrentConfig => _config;
+
+        #region 配置更新
+
+        public void UpdateConfig(AgentConfig newConfig)
+        {
+            if (newConfig == null) throw new ArgumentNullException(nameof(newConfig));
+            _config = newConfig;
+            OnLog?.Invoke("[Config] 配置已更新");
+        }
+
+        #endregion
+
         #region 连接 / 重连
 
         public async Task ConnectWithRetryAsync(CancellationToken? extToken = null)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(AgentClient));
+            
             _running = true;
             int attempt = 0;
-            while (_running)
+            while (_running && !_disposed)
             {
                 try
                 {
@@ -55,7 +72,7 @@ namespace WinRemoteSharp.Core
                     OnLog?.Invoke($"[Agent] 连接错误: {ex.Message}");
                 }
 
-                if (!_running) break;
+                if (!_running || _disposed) break;
 
                 // 指数退避
                 int delay = Math.Min(
@@ -64,11 +81,14 @@ namespace WinRemoteSharp.Core
                 OnLog?.Invoke($"[Agent] {delay} 秒后重试...");
                 try { await Task.Delay(delay * 1000, extToken ?? CancellationToken.None); }
                 catch (TaskCanceledException) { break; }
+                catch (OperationCanceledException) { break; }
             }
         }
 
         public async Task ConnectAsync()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(AgentClient));
+            
             _cts = new CancellationTokenSource();
             _ws = new ClientWebSocket();
             if (!string.IsNullOrEmpty(_config.Token))
@@ -80,7 +100,7 @@ namespace WinRemoteSharp.Core
             OnLog?.Invoke("[Agent] 已连接，发送认证...");
 
             await SendAuthAsync();
-            _ = Task.Run(() => HeartbeatLoop());
+            _ = Task.Run(HeartbeatLoopAsync);
         }
 
         private async Task SendAuthAsync()
@@ -104,27 +124,38 @@ namespace WinRemoteSharp.Core
         {
             var buffer = new byte[65536];
             var ms = new MemoryStream();
-            while (_ws?.State == WebSocketState.Open && _running)
+            try
             {
-                WebSocketReceiveResult result;
-                do
+                while (_ws?.State == WebSocketState.Open && _running && !_disposed)
                 {
-                    result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), _cts!.Token);
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), _cts!.Token);
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        ms.Write(buffer, 0, result.Count);
+                    } while (!result.EndOfMessage);
+
                     if (result.MessageType == WebSocketMessageType.Close) break;
-                    ms.Write(buffer, 0, result.Count);
-                } while (!result.EndOfMessage);
 
-                if (result.MessageType == WebSocketMessageType.Close) break;
-
-                string msg = Encoding.UTF8.GetString(ms.ToArray());
-                ms.SetLength(0);
-                _ = Task.Run(() => HandleMessage(msg));
+                    string msg = Encoding.UTF8.GetString(ms.ToArray());
+                    ms.SetLength(0);
+                    await HandleMessageAsync(msg);
+                }
             }
-            _connected = false;
-            OnConnectionChanged?.Invoke(false);
+            catch (OperationCanceledException) { }
+            catch (Exception ex) when (!_disposed)
+            {
+                OnLog?.Invoke($"[Agent] 接收循环错误: {ex.Message}");
+            }
+            finally
+            {
+                _connected = false;
+                OnConnectionChanged?.Invoke(false);
+            }
         }
 
-        private async void HandleMessage(string json)
+        private async Task HandleMessageAsync(string json)
         {
             try
             {
@@ -137,10 +168,10 @@ namespace WinRemoteSharp.Core
                 {
                     case "cmd":
                     case "command":
-                        await HandleCommand(root);
+                        await HandleCommandAsync(root);
                         break;
                     case "screenshot":
-                        await HandleScreenshot(root);
+                        await HandleScreenshotAsync(root);
                         break;
                     case "keyboard":
                         HandleKeyboard(root);
@@ -149,16 +180,19 @@ namespace WinRemoteSharp.Core
                         HandleMouse(root);
                         break;
                     case "file_read":
-                        await HandleFileRead(root);
+                        await HandleFileReadAsync(root);
                         break;
                     case "file_write":
-                        await HandleFileWrite(root);
+                        await HandleFileWriteAsync(root);
                         break;
                     case "notify":
                         HandleNotify(root);
                         break;
                     case "ping":
                         await SendJsonAsync(new { type = "pong", t = DateTimeOffset.UtcNow.ToUnixTimeSeconds() });
+                        break;
+                    case "config_update":
+                        HandleConfigUpdate(root);
                         break;
                 }
             }
@@ -168,15 +202,35 @@ namespace WinRemoteSharp.Core
             }
         }
 
+        private void HandleConfigUpdate(JsonElement root)
+        {
+            try
+            {
+                if (root.TryGetProperty("config", out var configElement))
+                {
+                    var newConfig = JsonSerializer.Deserialize<AgentConfig>(configElement.GetRawText());
+                    if (newConfig != null)
+                    {
+                        _config = newConfig;
+                        OnLog?.Invoke("[Config] 收到服务器配置更新");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"[Config] 配置更新解析失败: {ex.Message}");
+            }
+        }
+
         #endregion
 
         #region 指令处理
 
-        private async Task HandleCommand(JsonElement root)
+        private async Task HandleCommandAsync(JsonElement root)
         {
             string cmdId = GetString(root, "id", "");
             string cmd = GetString(root, "command", "");
-            string shell = GetString(root, "shell", "cmd"); // cmd / powershell
+            string shell = GetString(root, "shell", "cmd");
             bool elevated = GetBool(root, "elevated", false);
 
             OnLog?.Invoke($"[CMD] {shell}: {cmd}");
@@ -194,14 +248,14 @@ namespace WinRemoteSharp.Core
 
         private async Task<string> ExecuteCommandAsync(string command, string shell, bool elevated)
         {
-            var psi = new System.Diagnostics.ProcessStartInfo
+            var psi = new ProcessStartInfo
             {
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+                WindowStyle = ProcessWindowStyle.Hidden,
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8
             };
@@ -221,66 +275,87 @@ namespace WinRemoteSharp.Core
             {
                 psi.Verb = "runas";
                 psi.UseShellExecute = true;
+                // elevated 需要重新设置 redirect
+                psi.RedirectStandardOutput = false;
+                psi.RedirectStandardError = false;
             }
 
-            using var proc = System.Diagnostics.Process.Start(psi)!;
-            var outputBuilder = new StringBuilder();
-            var errorBuilder = new StringBuilder();
-            var outputTcs = new TaskCompletionSource<bool>();
-            var errorTcs = new TaskCompletionSource<bool>();
-
-            proc.OutputDataReceived += (s, e) =>
+            using var proc = Process.Start(psi)!;
+            
+            if (!elevated)
             {
-                if (e.Data != null)
-                    outputBuilder.AppendLine(e.Data);
-                else
-                    outputTcs.TrySetResult(true);
-            };
-            proc.ErrorDataReceived += (s, e) =>
-            {
-                if (e.Data != null)
-                    errorBuilder.AppendLine(e.Data);
-                else
-                    errorTcs.TrySetResult(true);
-            };
+                var outputBuilder = new StringBuilder();
+                var errorBuilder = new StringBuilder();
+                
+                proc.OutputDataReceived += (s, e) =>
+                {
+                    if (e.Data != null)
+                        outputBuilder.AppendLine(e.Data);
+                };
+                proc.ErrorDataReceived += (s, e) =>
+                {
+                    if (e.Data != null)
+                        errorBuilder.AppendLine(e.Data);
+                };
 
-            proc.BeginOutputReadLine();
-            proc.BeginErrorReadLine();
+                proc.BeginOutputReadLine();
+                proc.BeginErrorReadLine();
 
-            var timeoutTask = Task.Delay(_config.CommandTimeoutSec * 1000);
-            var waitTask = Task.WhenAll(outputTcs.Task, errorTcs.Task, proc.WaitForExitAsync());
-            var completed = await Task.WhenAny(waitTask, timeoutTask);
+                var timeoutTask = Task.Delay(_config.CommandTimeoutSec * 1000);
+                var waitTask = proc.WaitForExitAsync();
+                var completed = await Task.WhenAny(waitTask, timeoutTask);
 
-            if (completed == timeoutTask)
-            {
-                try { proc.Kill(); } catch { }
-                return "[ERROR] 命令执行超时";
+                if (completed == timeoutTask)
+                {
+                    try { proc.Kill(); } catch { }
+                    return "[ERROR] 命令执行超时";
+                }
+
+                string output = outputBuilder.ToString().TrimEnd();
+                string err = errorBuilder.ToString().TrimEnd();
+                return string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err;
             }
-
-            string output = outputBuilder.ToString().TrimEnd();
-            string err = errorBuilder.ToString().TrimEnd();
-            return string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err;
+            else
+            {
+                // Elevated 模式无法重定向输出
+                var waitTask = proc.WaitForExitAsync();
+                var timeoutTask = Task.Delay(_config.CommandTimeoutSec * 1000);
+                var completed = await Task.WhenAny(waitTask, timeoutTask);
+                
+                if (completed == timeoutTask)
+                {
+                    try { proc.Kill(); } catch { }
+                    return "[ERROR] 命令执行超时";
+                }
+                
+                return $"[INFO] 命令已执行 (ExitCode: {proc.ExitCode}) - 管理员模式下无法捕获输出";
+            }
         }
 
-        private async Task HandleScreenshot(JsonElement root)
+        private async Task HandleScreenshotAsync(JsonElement root)
         {
             string cmdId = GetString(root, "id", "");
             try
             {
-                using var bmp = CaptureScreen();
-                using var ms = new MemoryStream();
-                bmp.Save(ms, _config.ScreenshotFormat == "jpg" ? ImageFormat.Jpeg : ImageFormat.Png);
-                byte[] data = ms.ToArray();
-                string b64 = Convert.ToBase64String(data);
+                // 截图必须在 STA 线程运行
+                string b64 = await Task.Run(() =>
+                {
+                    using var bmp = CaptureScreen();
+                    using var ms = new MemoryStream();
+                    bmp.Save(ms, _config.ScreenshotFormat == "jpg" ? ImageFormat.Jpeg : ImageFormat.Png);
+                    byte[] data = ms.ToArray();
+                    return Convert.ToBase64String(data);
+                });
+
                 await SendJsonAsync(new
                 {
                     type = "screenshot_result",
                     id = cmdId,
                     format = _config.ScreenshotFormat,
                     data = b64,
-                    size = data.Length
+                    size = b64.Length * 3 / 4 // 近似原始大小
                 });
-                OnLog?.Invoke($"[截图] 已发送 ({data.Length} bytes)");
+                OnLog?.Invoke($"[截图] 已发送 ({b64.Length} chars base64)");
             }
             catch (Exception ex)
             {
@@ -338,13 +413,12 @@ namespace WinRemoteSharp.Core
                     mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
                     break;
                 case "move":
-                    // already moved above
                     break;
             }
             OnLog?.Invoke($"[鼠标] {action} @ ({x},{y})");
         }
 
-        private async Task HandleFileRead(JsonElement root)
+        private async Task HandleFileReadAsync(JsonElement root)
         {
             string cmdId = GetString(root, "id", "");
             string path = GetString(root, "path", "");
@@ -364,7 +438,7 @@ namespace WinRemoteSharp.Core
             }
         }
 
-        private async Task HandleFileWrite(JsonElement root)
+        private async Task HandleFileWriteAsync(JsonElement root)
         {
             string cmdId = GetString(root, "id", "");
             if (!_config.EnableFileWrite)
@@ -394,12 +468,11 @@ namespace WinRemoteSharp.Core
             string text = GetString(root, "text", "");
             try
             {
-                // 使用最小化 WinForms 弹窗
-                var t = new System.Threading.Thread(() =>
+                var t = new Thread(() =>
                 {
                     MessageBox.Show(text, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 });
-                t.SetApartmentState(System.Threading.ApartmentState.STA);
+                t.SetApartmentState(ApartmentState.STA);
                 t.Start();
             }
             catch (Exception ex)
@@ -412,13 +485,15 @@ namespace WinRemoteSharp.Core
 
         #region 心跳 / 发送
 
-        private async Task HeartbeatLoop()
+        private async Task HeartbeatLoopAsync()
         {
-            while (_ws?.State == WebSocketState.Open && _running)
+            while (_ws?.State == WebSocketState.Open && _running && !_disposed)
             {
                 try
                 {
                     await Task.Delay(_config.HeartbeatIntervalSec * 1000, _cts?.Token ?? CancellationToken.None);
+                    if (_disposed) break;
+                    
                     await SendJsonAsync(new
                     {
                         type = "heartbeat",
@@ -426,16 +501,24 @@ namespace WinRemoteSharp.Core
                         t = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                     });
                 }
-                catch { break; }
+                catch (OperationCanceledException) { break; }
+                catch (Exception) { break; }
             }
         }
 
         private async Task SendJsonAsync(object obj)
         {
-            if (_ws?.State != WebSocketState.Open) return;
-            string json = JsonSerializer.Serialize(obj);
-            byte[] data = Encoding.UTF8.GetBytes(json);
-            await _ws.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Text, true, _cts!.Token);
+            if (_ws?.State != WebSocketState.Open || _disposed) return;
+            try
+            {
+                string json = JsonSerializer.Serialize(obj);
+                byte[] data = Encoding.UTF8.GetBytes(json);
+                await _ws.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Text, true, _cts!.Token);
+            }
+            catch (Exception ex)
+            {
+                OnLog?.Invoke($"[发送] 错误: {ex.Message}");
+            }
         }
 
         private async Task SendResultAsync(string id, bool success, string output)
@@ -463,8 +546,17 @@ namespace WinRemoteSharp.Core
                     await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "client_close", CancellationToken.None);
             }
             catch { }
-            _connected = false;
-            OnConnectionChanged?.Invoke(false);
+            finally
+            {
+                _connected = false;
+                OnConnectionChanged?.Invoke(false);
+                
+                _cts?.Cancel();
+                _cts?.Dispose();
+                _cts = null;
+                _ws?.Dispose();
+                _ws = null;
+            }
         }
 
         private bool IsPathAllowed(string path)
@@ -507,6 +599,35 @@ namespace WinRemoteSharp.Core
 
         [DllImport("user32.dll")]
         public static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
+
+        #endregion
+
+        #region IDisposable
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _running = false;
+            
+            try
+            {
+                _cts?.Cancel();
+            }
+            catch { }
+            
+            try
+            {
+                if (_ws?.State == WebSocketState.Open)
+                {
+                    _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "dispose", CancellationToken.None).Wait(1000);
+                }
+            }
+            catch { }
+            
+            _cts?.Dispose();
+            _ws?.Dispose();
+        }
 
         #endregion
     }
