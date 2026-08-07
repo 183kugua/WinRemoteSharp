@@ -583,7 +583,6 @@
             <Setter Property="Margin" Value="0,4"/>
         </Style>
 
-<<<<<<< HEAD
         <!-- TabControl (增强版：内容切换动画) -->
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
