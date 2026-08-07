@@ -38,6 +38,7 @@ namespace WinRemoteSharp
             RefreshServiceStatus();
             AddLog("WinRemote Agent V1.2 已就绪");
 
+            // 自动连接服务器
             string url = TxtServerUrl.Text.Trim();
             if (!string.IsNullOrEmpty(url) && url.StartsWith("ws"))
             {
