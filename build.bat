@@ -1,65 +1,49 @@
 @echo off
-chcp 65001 >nul 2>&1
-setlocal EnableDelayedExpansion
-
-echo ==================================================
-echo   WinRemote Agent V1.2 Build Script (Debug)
-echo ==================================================
+chcp 65001 >nul
+echo ================================
+echo   WinRemoteSharp 构建脚本
+echo ================================
 echo.
 
-REM ============================================================
-REM  STEP1: Clean
-REM ============================================================
-echo [STEP 1/3] Cleaning...
+echo [STEP 1/4] Cleaning old build artifacts...
 if exist "bin" rmdir /s /q "bin"
 if exist "obj" rmdir /s /q "obj"
-echo   DONE
+if exist "publish" rmdir /s /q "publish"
+echo DONE Clean complete
 echo.
 
-REM ============================================================
-REM  STEP2: Restore
-REM ============================================================
-echo [STEP 2/3] Restoring packages...
-dotnet restore "WinRemoteSharp.csproj"
-if errorlevel 1 (
-    echo   ERROR Restore failed
-    goto :error
+echo [STEP 2/4] Restoring NuGet packages...
+dotnet restore WinRemoteSharp.csproj
+echo DONE Restore complete
+echo.
+
+echo [STEP 3/4] Building Release configuration...
+dotnet build --configuration Release --no-restore
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo ERROR Build failed - see messages above
+    echo.
+    pause
+    exit /b 1
 )
-echo   DONE
+echo DONE Build complete
 echo.
 
-REM ============================================================
-REM  STEP3: Build (Debug, no single-file)
-REM ============================================================
-echo [STEP 3/3] Building Debug...
-dotnet build "WinRemoteSharp.csproj" -c Debug
-if errorlevel 1 (
-    echo   ERROR Build failed - see messages above
-    goto :error
+echo [STEP 4/4] Publishing self-contained single-file...
+dotnet publish --configuration Release --no-restore --output publish
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo ERROR Publish failed - see messages above
+    echo.
+    pause
+    exit /b 1
 )
-echo   DONE Build complete
+echo DONE Publish complete
 echo.
 
-echo ==================================================
-echo   BUILD SUCCESSFUL ^(Debug^)
-echo   Output: bin\Debug\net8.0-windows\WinRemoteAgent.exe
-echo ==================================================
-echo.
-echo   Next: run publish.bat for Release single-file build
-echo.
-goto :eof
-
-:error
-echo.
-echo ==================================================
-echo   ERROR Build failed
-echo ==================================================
-echo.
-echo   Troubleshooting:
-echo   1. Verify .NET 8 SDK: dotnet --version
-echo   2. Check csproj:      type WinRemoteSharp.csproj
-echo   3. Deep clean:        rmdir /s /q bin obj dist
-echo   4. Verbose build:     dotnet build -v diag
+echo ================================
+echo   构建成功！
+echo   输出目录：.\publish
+echo ================================
 echo.
 pause
-exit /b 1

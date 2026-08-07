@@ -78,7 +78,6 @@
   <ItemGroup>
     <!-- Resources -->
     <Resource Include="Resources\DialogIcon.png" />
-    <Resource Include="Resources\App.ico" />
   </ItemGroup>
 
   <ItemGroup>
