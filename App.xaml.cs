@@ -33,12 +33,10 @@ namespace WinRemoteSharp
                 return;
             }
 
-            // 先初始化 WPF（创建主窗口）
             base.OnStartup(e);
 
             if (this.MainWindow is MainWindow mw)
             {
-                // TrayManager 现在使用独立 WinForms 线程，可以在任何时候创建
                 try
                 {
                     _trayManager = new TrayManager(mw);
@@ -47,13 +45,9 @@ namespace WinRemoteSharp
                 catch (Exception ex) { Log(ex); }
 
                 if (hideWindow)
-                {
                     mw.Hide();
-                }
                 else
-                {
                     mw.Show();
-                }
             }
         }
 
