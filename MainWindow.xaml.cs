@@ -352,6 +352,13 @@ namespace WinRemoteSharp
         private void LoadSettingsToUI()
         {
             var c = _config;
+
+            // --- 修复：回填连接核心字段（之前缺失，导致 UI 显示空白）---
+            TxtServerUrl.Text = c.ServerUrl;
+            TxtToken.Password = c.Token;
+            TxtAgentId.Text = c.AgentId;
+            // ---
+
             TxtHeartbeat.Text = c.HeartbeatInterval.ToString();
             TxtShellTimeout.Text = c.ConnectionTimeout.ToString();
             TxtMaxOutput.Text = c.MaxOutputBytes.ToString();
@@ -379,6 +386,7 @@ namespace WinRemoteSharp
             var c = _config;
             c.ServerUrl = TxtServerUrl.Text.Trim();
             c.Token = TxtToken.Password;
+            c.AgentId = TxtAgentId.Text.Trim();
             if (int.TryParse(TxtHeartbeat.Text, out int hb)) c.HeartbeatInterval = hb;
             if (int.TryParse(TxtShellTimeout.Text, out int to)) c.ConnectionTimeout = to;
             if (int.TryParse(TxtMaxOutput.Text, out int mo)) c.MaxOutputBytes = mo;
