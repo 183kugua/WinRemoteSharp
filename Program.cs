@@ -12,7 +12,7 @@ namespace WinRemoteSharp
     {
         public static async Task<int> RunAsync(string[] args)
         {
-            string serverUrl = "ws://127.0.0.1:8000/ws/winremote";
+            string serverUrl = "ws://127.0.0.1:6190/winremote";
             string token = "";
             string configPath = "config.json";
             bool installService = false;
@@ -34,41 +34,53 @@ namespace WinRemoteSharp
                 else if (a == "--status") showStatus = true;
             }
 
-            var config = ConfigManager.Load(configPath);
-            if (!string.IsNullOrEmpty(token)) config.Token = token;
-            if (!string.IsNullOrEmpty(serverUrl)) config.ServerUrl = serverUrl;
+            var sm = new Core.ServiceManager();
 
             if (installService)
             {
-                var sm = new ServiceManager(configPath);
-                return sm.Install() ? 0 : 1;
+                Console.WriteLine(sm.Install());
+                return 0;
             }
             if (uninstallService)
             {
-                var sm = new ServiceManager(configPath);
-                return sm.Uninstall() ? 0 : 1;
+                Console.WriteLine(sm.Uninstall());
+                return 0;
             }
             if (startService)
             {
-                var sm = new ServiceManager(configPath);
-                return sm.Start() ? 0 : 1;
+                Console.WriteLine(sm.Start());
+                return 0;
             }
             if (stopService)
             {
-                var sm = new ServiceManager(configPath);
-                return sm.Stop() ? 0 : 1;
+                Console.WriteLine(sm.Stop());
+                return 0;
             }
             if (showStatus)
             {
-                var sm = new ServiceManager(configPath);
-                var status = sm.GetStatus();
-                Console.WriteLine($"Status: {status}");
+                var (running, state) = sm.GetServiceState();
+                Console.WriteLine($"Status: {state} (running={running})");
                 return 0;
             }
 
             // Default: run agent headless
-            var client = new AgentClient(config);
-            await client.ConnectAsync(serverUrl, token);
+            var agentConfig = new AgentConfig
+            {
+                ServerUrl = serverUrl,
+                Token = token,
+                AgentId = Environment.MachineName,
+                HeartbeatIntervalSec = 30,
+                CommandTimeoutSec = 30,
+                EnableKeyboard = true,
+                EnableMouse = true
+            };
+
+            var client = new Core.AgentClient(agentConfig);
+            client.OnLog += (msg) => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {msg}");
+            client.OnConnectionChanged += (connected) =>
+                Console.WriteLine($"[Agent] Connection: {(connected ? "connected" : "disconnected")}");
+
+            await client.ConnectWithRetryAsync();
             await Task.Delay(-1); // run forever
             return 0;
         }

@@ -49,10 +49,15 @@
     <Compile Include="App.xaml.cs" />
     <Compile Include="MainWindow.xaml.cs" />
     <Compile Include="InputDialog.cs" />
-    <Compile Include="AgentClient.cs" />
     <Compile Include="ConfigManager.cs" />
-    <Compile Include="ServiceManager.cs" />
     <Compile Include="TrayManager.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core/ source files -->
+    <Compile Include="Core\AgentClient.cs" />
+    <Compile Include="Core\AgentConfig.cs" />
+    <Compile Include="Core\ServiceManager.cs" />
   </ItemGroup>
 
   <ItemGroup>

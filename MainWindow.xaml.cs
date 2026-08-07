@@ -1,58 +1,46 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using WinRemoteSharp.Core;
 
 namespace WinRemoteSharp
 {
     public partial class MainWindow : Window
     {
-        private AgentClient? _agent;
-        private readonly Core.Config _config;
-        private readonly Core.ServiceManager _svcMgr;
+        private Core.AgentClient? _agent;
+        private Core.Config _config;
+        private Core.ServiceManager? _svcMgr;
         private TrayManager? _trayMgr;
-        private bool _closingToTray = true;
+        internal bool _closingToTray = true;
 
-        // 画�刷�缓存（走资源，不�硬编码）
-        private System.Windows.Media.Brush? _brushStatusOn;
-        private System.Windows.Media.Brush? _brushStatusOff;
-        private System.Windows.Media.Brush? _brushStatusErr;
-        private System.Windows.Media.Brush? _brushStatusWarn;
-
-        public bool IsConnected => _agent?.IsConnected == true;
+        public bool IsConnected => _agent?.IsConnected ?? false;
 
         public MainWindow()
         {
             InitializeComponent();
             _config = Core.ConfigManager.Load();
-            
             _svcMgr = new Core.ServiceManager();
-
-            // �缓存画�刷
-            _brushStatusOn = FindResource("StatusOnBrush") as System.Windows.Media.Brush ?? Brushes.LimeGreen;
-            _brushStatusOff = FindResource("StatusOffBrush") as System.Windows.Media.Brush ?? Brushes.Gray;
-            _brushStatusErr = FindResource("StatusErrBrush") as System.Windows.Media.Brush ?? Brushes.Red;
-            _brushStatusWarn = FindResource("StatusWarnBrush") as System.Windows.Media.Brush ?? Brushes.Orange;
-
-            // 初始化托�盘
-            _trayMgr = new TrayManager(this);
 
             Loaded += MainWindow_Loaded;
             Closed += MainWindow_Closed;
-            StateChanged += MainWindow_StateChanged;
             Closing += MainWindow_Closing;
+        }
+
+        public void SetTrayManager(TrayManager trayMgr)
+        {
+            _trayMgr = trayMgr;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             LoadSettingsToUI();
+            RefreshSystemInfo();
             RefreshServiceStatus();
-            RefreshDependencies();
-            AddLog("��✅ WinRemote Agent V1.2 � 已就�绪");
+            AddLog("WinRemote Agent V1.2 已就绪");
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -61,32 +49,22 @@ namespace WinRemoteSharp
             {
                 e.Cancel = true;
                 Hide();
-                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托�盘，双击图标显示�窗口", System.Windows.Forms.ToolTipIcon.Info);
+                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托盘，双击图标显示窗口", System.Windows.Forms.ToolTipIcon.Info);
             }
             else
             {
-                _ = _agent?.DisconnectAsync();
-                _trayMgr?.Dispose();
+                _agent?.DisconnectAsync().GetAwaiter().GetResult();
+                _svcMgr?.Dispose();
             }
         }
 
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
-            _ = _agent?.DisconnectAsync();
-            _trayMgr?.Dispose();
+            _agent?.DisconnectAsync().GetAwaiter().GetResult();
             _svcMgr?.Dispose();
         }
 
-        private void MainWindow_StateChanged(object? sender, EventArgs e)
-        {
-            if (WindowState == WindowState.Minimized)
-            {
-                Hide();
-                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托�盘，双击图标显示�窗口", System.Windows.Forms.ToolTipIcon.Info);
-            }
-        }
-
-        #region 公共日志方法（供 TrayManager �� 调用）
+        #region 日志
 
         public void AddLog(string msg)
         {
@@ -95,179 +73,258 @@ namespace WinRemoteSharp
             {
                 TxtLog.AppendText(line + Environment.NewLine);
                 TxtLog.ScrollToEnd();
-                TxtAllLog.AppendText(line + Environment.NewLine);
-                TxtAllLog.ScrollToEnd();
+                TxtFullLog.AppendText(line + Environment.NewLine);
+                TxtFullLog.ScrollToEnd();
             });
         }
 
-        #endregion
-
-        #region 托�盘菜单回调方法
-
-        public void TrayConnect()
+        private void UpdateStatusDot(bool connected)
         {
-            Dispatcher.Invoke(async () => await BtnStart_Click(null!, null!));
-        }
-
-        public void TrayDisconnect()
-        {
-            Dispatcher.Invoke(async () => await BtnStop_Click(null!, null!));
-        }
-
-        public void TrayInstallService()
-        {
-            Dispatcher.Invoke(() => BtnSrvInstall_Click(null!, null!));
-        }
-
-        public void TrayUninstallService()
-        {
-            Dispatcher.Invoke(() => BtnSrvUninstall_Click(null!, null!));
-        }
-
-        public void TrayStartService()
-        {
-            Dispatcher.Invoke(() => BtnSrvStart_Click(null!, null!));
-        }
-
-        public void TrayStopService()
-        {
-            Dispatcher.Invoke(() => BtnSrvStop_Click(null!, null!));
-        }
-
-        public void TrayServiceStatus()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                var (running, state) = _svcMgr.GetServiceState();
-                MessageBox.Show($"服务状态: {state}\nNSSM: {(_svcMgr.IsNssmAvailable() ? "已安装" : "未安装")}", "WinRemote - 服务状态");
-            });
-        }
-
-        public void TrayCheckUpdate()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                MessageBox.Show("WinRemote Agent V1.2\n\n当前已是最新版本。", "关于", MessageBoxButton.OK, MessageBoxImage.Information);
-            });
-        }
-
-        public void TrayRefreshLogs()
-        {
-            Dispatcher.Invoke(() => TxtAllLog.ScrollToEnd());
-        }
-
-        public void TrayOpenLogDir()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                string logDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "WinRemote", "logs");
-                if (!Directory.Exists(logDir)) Directory.CreateDirectory(logDir);
-                Process.Start("explorer.exe", logDir);
-            });
+            StatusDot.Fill = connected
+                ? new SolidColorBrush(Colors.LimeGreen)
+                : new SolidColorBrush(Colors.Red);
+            StatusText.Text = connected ? "已连接" : "Agent 已停止";
+            _trayMgr?.UpdateConnectionStatus(connected);
         }
 
         #endregion
 
         #region Tab1 主控台
 
-        private async void BtnStart_Click(object sender, RoutedEventArgs e)
+        private async void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent != null && _agent.IsConnected)
+            if (_agent?.IsConnected == true)
             {
-                AddLog("��⚠��️ Agent � 已在运行");
+                AddLog("Agent 已在运行");
                 return;
             }
 
             SyncUIToConfig();
             Core.ConfigManager.Save(_config);
 
-            _agent = new AgentClient(_config);
+            var agentConfig = new Core.AgentConfig
+            {
+                ServerUrl = TxtServerUrl.Text.Trim(),
+                Token = TxtToken.Password,
+                AgentId = TxtAgentId.Text.Trim(),
+                HeartbeatIntervalSec = TryParseInt(TxtHeartbeat.Text, 30),
+                CommandTimeoutSec = TryParseInt(TxtShellTimeout.Text, 30),
+                EnableKeyboard = true,
+                EnableMouse = true,
+                EnableFileWrite = ChkAllowWrite?.IsChecked ?? false,
+                FileReadWhitelist = (TxtWhitelist.Text ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries),
+                ScreenshotFormat = "jpg",
+                ReconnectBaseDelaySec = 2,
+                ReconnectMaxDelaySec = 60
+            };
+
+            _agent = new Core.AgentClient(agentConfig);
             _agent.OnLog += AddLog;
             _agent.OnConnectionChanged += (connected) =>
             {
-                Dispatcher.Invoke(() =>
-                {
-                    var brush = connected ? _brushStatusOn : _brushStatusOff;
-                    if (DotConnection != null) DotConnection.Fill = brush;
-                    TxtConnection.Text = connected ? "● � 已连接" : "● 未连接";
-                    TxtStatusDetail.Text = connected ? "已连接" : "未连接";
-                    if (DotStatusDetail != null) DotStatusDetail.Fill = brush;
-                    TxtAgentState.Text = connected ? "Agent 运行中" : "Agent � 已停止";
-                    if (DotAgent != null) DotAgent.Fill = connected ? _brushStatusOn : _brushStatusOff;
-                });
+                Dispatcher.Invoke(() => UpdateStatusDot(connected));
             };
 
-            BtnStart.IsEnabled = false;
-            TxtStatus.Text = "正在连接...";
+            BtnConnect.IsEnabled = false;
             try
             {
-                _ = Task.Run(async () =>
+                await Task.Run(async () =>
                 {
                     try { await _agent.ConnectWithRetryAsync(); }
-                    catch (Exception ex) { AddLog($"��❌ 连接失败: {ex.Message}"); }
-                    finally { Dispatcher.Invoke(() => BtnStart.IsEnabled = true); }
+                    catch (Exception ex) { AddLog($"连接失败: {ex.Message}"); }
+                    finally { Dispatcher.Invoke(() => BtnConnect.IsEnabled = true); }
                 });
             }
             catch (Exception ex)
             {
-                AddLog($"��❌ 启动�异常: {ex.Message}");
-                BtnStart.IsEnabled = true;
+                AddLog($"启动异常: {ex.Message}");
+                BtnConnect.IsEnabled = true;
             }
-            await Task.CompletedTask;
         }
 
-        private async void BtnStop_Click(object sender, RoutedEventArgs e)
+        private async void BtnDisconnect_Click(object sender, RoutedEventArgs e)
         {
             if (_agent != null)
             {
                 await _agent.DisconnectAsync();
                 _agent = null;
-                AddLog("��⏹ Agent � 已停止");
+                AddLog("Agent 已停止");
             }
-            TxtStatus.Text = "就�绪";
         }
 
-        private async void BtnTest_Click(object sender, RoutedEventArgs e)
+        private void BtnShell_Click(object sender, RoutedEventArgs e)
         {
-            string url = TxtServer.Text.Trim();
-            if (string.IsNullOrEmpty(url)) { AddLog("��⚠��️ 请输入服务器地�址"); return; }
-            AddLog($"���🔌 � 测试连接: {url}");
+            var dlg = new InputDialog("执行 CMD 命令", "请输入命令:");
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
+            {
+                TxtTestCommand.Text = dlg.InputText;
+                RunShellCommand(dlg.InputText, "cmd");
+            }
+        }
+
+        private void BtnPowershell_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new InputDialog("执行 PowerShell 命令", "请输入命令:");
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
+            {
+                TxtTestCommand.Text = dlg.InputText;
+                RunShellCommand(dlg.InputText, "powershell");
+            }
+        }
+
+        private async void RunShellCommand(string cmd, string shell)
+        {
+            AddLog($"执行 [{shell}]: {cmd}");
+            TxtTestResult.Text = "执行中...";
             try
             {
-                using var ws = new System.Net.WebSockets.ClientWebSocket();
-                var cts = new System.Threading.CancellationTokenSource(5000);
-                await ws.ConnectAsync(new Uri(url), cts.Token);
-                AddLog("��✅ 连接成功！服务器可达");
-                await ws.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.NormalClosure, "test", System.Threading.CancellationToken.None);
+                var psi = new ProcessStartInfo
+                {
+                    FileName = shell == "powershell" ? "powershell.exe" : "cmd.exe",
+                    Arguments = shell == "powershell" ? $"-NoProfile -Command \"{cmd}\"" : $"/c {cmd}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8
+                };
+                using var proc = Process.Start(psi)!;
+                var outputTask = proc.StandardOutput.ReadToEndAsync();
+                var errorTask = proc.StandardError.ReadToEndAsync();
+                var timeoutTask = Task.Delay(30000);
+                var completed = await Task.WhenAny(Task.WhenAll(outputTask, errorTask), timeoutTask);
+                if (completed == timeoutTask)
+                {
+                    try { proc.Kill(); } catch { }
+                    TxtTestResult.Text = "[ERROR] 命令执行超时";
+                    return;
+                }
+                string output = outputTask.Result;
+                string err = errorTask.Result;
+                string result = string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err;
+                TxtTestResult.Text = result;
+                AddLog("执行完成");
             }
             catch (Exception ex)
             {
-                AddLog($"��❌ 连接失败: {ex.Message}");
+                TxtTestResult.Text = "错误: " + ex.Message;
+                AddLog($"执行失败: {ex.Message}");
             }
         }
 
-        private void BtnGenToken_Click(object sender, RoutedEventArgs e)
+        private void BtnScreenshot_Click(object sender, RoutedEventArgs e)
         {
-            var bytes = new byte[32];
-            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            rng.GetBytes(bytes);
-            string token = Convert.ToBase64String(bytes).Replace("+", "").Replace("/", "").Replace("=", "").Substring(0, 32);
-            TxtToken.Password = token;
-            AddLog($"���🎲 � 已生成随机令牌");
+            try
+            {
+                var bounds = System.Windows.Forms.Screen.PrimaryScreen?.Bounds
+                    ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+                using var bmp = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                    g.CopyFromScreen(bounds.Location, System.Drawing.Point.Empty, bounds.Size);
+                string path = Path.Combine(Path.GetTempPath(), $"WinRemote_Screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+                bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                TxtTestResult.Text = $"截图已保存到: {path}";
+                AddLog($"截图已保存: {path}");
+            }
+            catch (Exception ex) { AddLog($"截图失败: {ex.Message}"); }
         }
 
-        private void BtnLogClear_Click(object sender, RoutedEventArgs e)
+        private void BtnKeypress_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new InputDialog("模拟按键", "请输入要发送的按键组合 (如 ^{ESC}):");
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
+            {
+                try
+                {
+                    System.Windows.Forms.SendKeys.SendWait(dlg.InputText);
+                    AddLog($"已发送按键: {dlg.InputText}");
+                }
+                catch (Exception ex) { AddLog($"发送失败: {ex.Message}"); }
+            }
+        }
+
+        private void BtnMouse_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                int x = System.Windows.Forms.Cursor.Position.X;
+                int y = System.Windows.Forms.Cursor.Position.Y;
+                Core.AgentClient.mouse_event(Core.AgentClient.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                Core.AgentClient.mouse_event(Core.AgentClient.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                AddLog($"左键点击 @ ({x},{y})");
+            }
+            catch (Exception ex) { AddLog($"操作失败: {ex.Message}"); }
+        }
+
+        private void BtnOpen_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new InputDialog("打开程序/文件", "请输入程序路径或文件路径:");
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(dlg.InputText) { UseShellExecute = true });
+                    AddLog($"已启动: {dlg.InputText}");
+                }
+                catch (Exception ex) { AddLog($"启动失败: {ex.Message}"); }
+            }
+        }
+
+        private void BtnReadFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new InputDialog("读取文件", "请输入文件路径:");
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
+            {
+                try
+                {
+                    string content = File.ReadAllText(dlg.InputText);
+                    TxtTestResult.Text = content;
+                    AddLog($"已读取: {dlg.InputText} ({content.Length} 字节)");
+                }
+                catch (Exception ex)
+                {
+                    TxtTestResult.Text = "错误: " + ex.Message;
+                    AddLog($"读取失败: {ex.Message}");
+                }
+            }
+        }
+
+        private void BtnWriteFile_Click(object sender, RoutedEventArgs e)
+        {
+            AddLog("文件写入功能请通过远程连接使用");
+        }
+
+        private async void BtnSendTest_Click(object sender, RoutedEventArgs e)
+        {
+            string url = TxtServerUrl.Text.Trim();
+            if (string.IsNullOrEmpty(url)) { AddLog("请输入服务器地址"); return; }
+            AddLog($"测试连接: {url}");
+            await Task.Run(async () =>
+            {
+                try
+                {
+                    using var ws = new System.Net.WebSockets.ClientWebSocket();
+                    var cts = new System.Threading.CancellationTokenSource(5000);
+                    await ws.ConnectAsync(new Uri(url), cts.Token);
+                    Dispatcher.Invoke(() => AddLog("连接成功！服务器可达"));
+                    await ws.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.NormalClosure, "test", System.Threading.CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(() => AddLog($"连接失败: {ex.Message}"));
+                }
+            });
+        }
+
+        private void BtnClearLog_Click(object sender, RoutedEventArgs e)
         {
             TxtLog.Clear();
-        }
-
-        private void BtnExit_Click(object sender, RoutedEventArgs e)
-        {
-            _closingToTray = false;
-            _ = _agent?.DisconnectAsync();
-            Close();
         }
 
         #endregion
@@ -277,55 +334,30 @@ namespace WinRemoteSharp
         private void LoadSettingsToUI()
         {
             var c = _config;
-            SetServer.Text = c.ServerUrl;
-            SetHeartbeat.Text = c.HeartbeatIntervalSec.ToString();
-            SetTimeout.Text = c.CommandTimeoutSec.ToString();
-            SetScreenshotFmt.SelectedIndex = c.ScreenshotFormat == "jpg" ? 1 : 0;
-            ChkKeyboard.IsChecked = c.EnableKeyboard;
-            ChkFileWrite.IsChecked = c.EnableFileWrite;
-            TxtWhitelist.Text = string.Join(Environment.NewLine, c.FileReadWhitelist ?? Array.Empty<string>());
-            TxtServer.Text = c.ServerUrl;
-            TxtAgentId.Text = c.AgentId;
+            TxtHeartbeat.Text = c.HeartbeatInterval.ToString();
+            TxtShellTimeout.Text = c.ConnectionTimeout.ToString();
+            TxtMaxOutput.Text = c.MaxOutputBytes.ToString();
+            CmbScreenshotFmt.SelectedIndex = 0;
         }
 
         private void SyncUIToConfig()
         {
             var c = _config;
-            c.ServerUrl = TxtServer.Text.Trim();
-            c.AgentId = TxtAgentId.Text.Trim();
+            c.ServerUrl = TxtServerUrl.Text.Trim();
             c.Token = TxtToken.Password;
-            if (int.TryParse(SetHeartbeat.Text, out int hb)) c.HeartbeatIntervalSec = hb;
-            if (int.TryParse(SetTimeout.Text, out int to)) c.CommandTimeoutSec = to;
-            c.ScreenshotFormat = (SetScreenshotFmt.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "png";
-            c.EnableKeyboard = ChkKeyboard.IsChecked ?? true;
-            c.EnableMouse = ChkKeyboard.IsChecked ?? true;
-            c.EnableFileWrite = ChkFileWrite.IsChecked ?? false;
-            c.FileReadWhitelist = TxtWhitelist.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (int.TryParse(TxtHeartbeat.Text, out int hb)) c.HeartbeatInterval = hb;
+            if (int.TryParse(TxtShellTimeout.Text, out int to)) c.ConnectionTimeout = to;
+            if (int.TryParse(TxtMaxOutput.Text, out int mo)) c.MaxOutputBytes = mo;
         }
 
-        private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
+        private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)
         {
             SyncUIToConfig();
             Core.ConfigManager.Save(_config);
-            
-            // 如果 Agent 正在运行，更新其配置
-            if (_agent != null)
-            {
-                _agent.UpdateConfig(_config);
-                AddLog("���💾 设置已保存并应用到运行中的 Agent");
-            }
-            else
-            {
-                AddLog("���💾 设置已保存");
-            }
-            MessageBox.Show("设置已保存！", "WinRemote", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void BtnResetSettings_Click(object sender, RoutedEventArgs e)
-        {
-            Core.ConfigManager.ApplyDefaults(_config);
-            LoadSettingsToUI();
-            AddLog("���🔄 � 已�恢复默认设置");
+            AddLog("设置已保存");
+            System.Windows.Forms.MessageBox.Show("设置已保存！", "WinRemote",
+                System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Information);
         }
 
         #endregion
@@ -334,267 +366,130 @@ namespace WinRemoteSharp
 
         private void RefreshServiceStatus()
         {
+            if (_svcMgr == null) return;
             var (running, state) = _svcMgr.GetServiceState();
-            TxtServiceState.Text = state;
-            if (DotService != null)
-                DotService.Fill = running ? _brushStatusOn : _brushStatusOff;
-
+            ServiceStatusText.Text = state;
+            ServiceDot.Fill = running
+                ? new SolidColorBrush(Colors.LimeGreen)
+                : new SolidColorBrush(Colors.Gray);
             bool nssm = _svcMgr.IsNssmAvailable();
-            TxtNssmStatus.Text = nssm ? "��✅ � 已安装" : "��❌ 未安装";
+            NssmStatusText.Text = nssm ? "已安装" : "未安装";
         }
 
-        private void RefreshDependencies()
+        private void BtnSvcInstall_Click(object sender, RoutedEventArgs e)
         {
-            GrdDeps.Children.Clear();
-            var deps = new[]
-            {
-                ("WinRemoteAgent.exe", File.Exists("WinRemoteAgent.exe")),
-                ("nssm.exe", _svcMgr.IsNssmAvailable()),
-                ("System.Text.Json 8.0.5", true),
-                (".NET 8 Runtime", true),
-                ("管理员权限", IsAdmin()),
-            };
-            int col = 0;
-            foreach (var (name, ok) in deps)
-            {
-                var tb = new TextBlock
-                {
-                    Text = (ok ? "��✅ " : "��❌ ") + name,
-                    Foreground = ok ? _brushStatusOn : _brushStatusErr,
-                    FontFamily = new System.Windows.Media.FontFamily("Microsoft YaHei UI"),
-                    FontSize = 12,
-                    Margin = new Thickness(0, 0, 16, 4)
-                };
-                Grid.SetColumn(tb, col % 3);
-                GrdDeps.Children.Add(tb);
-                col++;
-            }
+            string result = _svcMgr!.Install();
+            AddLog(result);
+            RefreshServiceStatus();
         }
 
-        private bool IsAdmin()
+        private void BtnSvcUninstall_Click(object sender, RoutedEventArgs e)
+        {
+            string result = _svcMgr!.Uninstall();
+            AddLog(result);
+            RefreshServiceStatus();
+        }
+
+        private void BtnSvcStart_Click(object sender, RoutedEventArgs e)
+        {
+            string result = _svcMgr!.Start();
+            AddLog(result);
+            RefreshServiceStatus();
+        }
+
+        private void BtnSvcStop_Click(object sender, RoutedEventArgs e)
+        {
+            string result = _svcMgr!.Stop();
+            AddLog(result);
+            RefreshServiceStatus();
+        }
+
+        private void BtnSvcRestart_Click(object sender, RoutedEventArgs e)
+        {
+            string result = _svcMgr!.Restart();
+            AddLog(result);
+            RefreshServiceStatus();
+        }
+
+        private void BtnDownloadNssm_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var id = System.Security.Principal.WindowsIdentity.GetCurrent();
-                var principal = new System.Security.Principal.WindowsPrincipal(id);
-                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+                Process.Start(new ProcessStartInfo("https://nssm.cc/download") { UseShellExecute = true });
+                AddLog("已打开 NSSM 下载页面");
             }
-            catch { return false; }
+            catch { AddLog("无法打开浏览器"); }
         }
 
-        private void BtnSrvInstall_Click(object sender, RoutedEventArgs e)
+        private void BtnViewLogs_Click(object sender, RoutedEventArgs e)
         {
-            string result = _svcMgr.Install();
-            AddLog(result);
-            RefreshServiceStatus();
+            string log = _svcMgr!.ReadServiceLog();
+            TxtServiceLog.Text = log;
         }
 
-        private void BtnSrvStart_Click(object sender, RoutedEventArgs e)
+        private void BtnClearServiceLog_Click(object sender, RoutedEventArgs e)
         {
-            string result = _svcMgr.Start();
-            AddLog(result);
-            RefreshServiceStatus();
+            TxtServiceLog.Clear();
         }
 
-        private void BtnSrvStop_Click(object sender, RoutedEventArgs e)
+        private void BtnRefreshLog_Click(object sender, RoutedEventArgs e)
         {
-            string result = _svcMgr.Stop();
-            AddLog(result);
-            RefreshServiceStatus();
-        }
-
-        private void BtnSrvRestart_Click(object sender, RoutedEventArgs e)
-        {
-            string result = _svcMgr.Restart();
-            AddLog(result);
-            RefreshServiceStatus();
-        }
-
-        private void BtnSrvUninstall_Click(object sender, RoutedEventArgs e)
-        {
-            if (MessageBox.Show("确定要�卸载服务吗？", "确认", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-            {
-                string result = _svcMgr.Uninstall();
-                AddLog(result);
-                RefreshServiceStatus();
-            }
-        }
-
-        private void BtnViewSvcLog_Click(object sender, RoutedEventArgs e)
-        {
-            string log = _svcMgr.ReadServiceLog();
-            TxtSvcLog.Text = log;
-        }
-
-        private void BtnSvcLogClear_Click(object sender, RoutedEventArgs e)
-        {
-            TxtSvcLog.Clear();
+            TxtFullLog.ScrollToEnd();
         }
 
         #endregion
 
-        #region Tab4 运行日志
+        #region 系统信息
 
-        private void BtnLogRefresh_Click(object sender, RoutedEventArgs e)
+        private void RefreshSystemInfo()
         {
-            TxtAllLog.ScrollToEnd();
-        }
-
-        private void BtnLogSave_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "文本文件|*.txt|所有文件|*.*",
-                FileName = $"WinRemote_Log_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
-            };
-            if (dlg.ShowDialog() == true)
-            {
-                File.WriteAllText(dlg.FileName, TxtAllLog.Text);
-                AddLog($"���💾 日志已保存: {dlg.FileName}");
-            }
+            TxtHostname.Text = Environment.MachineName;
+            TxtOS.Text = Environment.OSVersion.ToString();
+            TxtUsername.Text = Environment.UserName;
+            TxtDotNetVer.Text = Environment.Version.ToString();
         }
 
         #endregion
 
-        #region Tab5 � 工具�箱
+        #region 托盘回调
 
-        private void BtnRunCmd_Click(object sender, RoutedEventArgs e)
+        public void TrayConnect() => Dispatcher.Invoke(async () => BtnConnect_Click(null!, null!));
+        public void TrayDisconnect() => Dispatcher.Invoke(async () => BtnDisconnect_Click(null!, null!));
+        public void TrayInstallService() => Dispatcher.Invoke(() => BtnSvcInstall_Click(null!, null!));
+        public void TrayUninstallService() => Dispatcher.Invoke(() => BtnSvcUninstall_Click(null!, null!));
+        public void TrayStartService() => Dispatcher.Invoke(() => BtnSvcStart_Click(null!, null!));
+        public void TrayStopService() => Dispatcher.Invoke(() => BtnSvcStop_Click(null!, null!));
+        public void TrayServiceStatus() => Dispatcher.Invoke(() =>
         {
-            string cmd = TxtCmd.Text.Trim();
-            if (string.IsNullOrEmpty(cmd)) return;
-            string shell = (CmbShell.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "CMD";
-            AddLog($"�▶ �执行 [{shell}]: {cmd}");
-            _ = Task.Run(() =>
-            {
-                try
-                {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = shell == "PowerShell" ? "powershell.exe" : "cmd.exe",
-                        Arguments = shell == "PowerShell" ? $"-NoProfile -Command \"{cmd}\"" : $"/c {cmd}",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    using var proc = Process.Start(psi)!;
-                    string output = proc.StandardOutput.ReadToEnd();
-                    string err = proc.StandardError.ReadToEnd();
-                    proc.WaitForExit(_config.CommandTimeoutSec * 1000);
-                    string result = string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err;
-                    Dispatcher.Invoke(() => { TxtResult.Text = result; });
-                    AddLog($"��✅ �执行完成 ({result.Length} 字节)");
-                }
-                catch (Exception ex) { AddLog($"��❌ �执行失败: {ex.Message}"); }
-            });
-        }
+            System.Windows.Forms.MessageBox.Show(
+                "服务状态请查看「系统服务」选项卡",
+                "WinRemote - 服务状态");
+        });
+        public void TrayCheckUpdate() => Dispatcher.Invoke(() =>
+        {
+            System.Windows.Forms.MessageBox.Show(
+                "WinRemote Agent V1.2\n\n当前已是最新版本。",
+                "关于");
+        });
+        public void TrayRefreshLogs() => Dispatcher.Invoke(() => TxtFullLog.ScrollToEnd());
+        public void TrayOpenLogDir() => Dispatcher.Invoke(() =>
+        {
+            string logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "WinRemote", "logs");
+            if (!Directory.Exists(logDir)) Directory.CreateDirectory(logDir);
+            Process.Start("explorer.exe", logDir);
+        });
 
-        private void BtnSendKeys_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_config.EnableKeyboard) { AddLog("��⚠��️ �� 键�盘模�拟未启用"); return; }
-            string keys = TxtSendKeys.Text;
-            try
-            {
-                System.Windows.Forms.SendKeys.SendWait(keys);
-                AddLog($"��⌨��️ � 已发送按�键: {keys}");
-            }
-            catch (Exception ex) { AddLog($"��❌ 发送失败: {ex.Message}"); }
-        }
+        #endregion
 
-        private void BtnMouseClick_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_config.EnableMouse) { AddLog("��⚠��️ �� 鼠标模�拟未启用"); return; }
-            if (int.TryParse(TxtMouseX.Text, out int x) && int.TryParse(TxtMouseY.Text, out int y))
-            {
-                System.Windows.Forms.Cursor.Position = new System.Drawing.Point(x, y);
-                AgentClient.mouse_event(AgentClient.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-                AgentClient.mouse_event(AgentClient.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-                AddLog($"���🖱 � 左�键点击 @ ({x},{y})");
-            }
-        }
+        #region 工具方法
 
-        private void BtnMouseRight_Click(object sender, RoutedEventArgs e)
+        private static int TryParseInt(string s, int def)
         {
-            if (!_config.EnableMouse) { AddLog("��⚠��️ �� 鼠标模�拟未启用"); return; }
-            AgentClient.mouse_event(AgentClient.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
-            AgentClient.mouse_event(AgentClient.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
-            AddLog("���🖱 右�键点击");
-        }
-
-        private void BtnReadFile_Click(object sender, RoutedEventArgs e)
-        {
-            string path = TxtReadFile.Text.Trim();
-            if (string.IsNullOrEmpty(path)) return;
-            try
-            {
-                if (!_config.FileReadWhitelist.Any(w => Path.GetFullPath(path).StartsWith(Path.GetFullPath(w), StringComparison.OrdinalIgnoreCase)))
-                {
-                    AddLog("��⚠��️ � 路径不在白名单内");
-                    return;
-                }
-                string content = File.ReadAllText(path);
-                TxtResult.Text = content;
-                AddLog($"���📄 � 已读取: {path} ({content.Length} 字节)");
-            }
-            catch (Exception ex) { AddLog($"��❌ 读取失败: {ex.Message}"); }
-        }
-
-        private void BtnOpenProg_Click(object sender, RoutedEventArgs e)
-        {
-            string prog = TxtOpenProg.Text.Trim();
-            try
-            {
-                Process.Start(new ProcessStartInfo(prog) { UseShellExecute = true });
-                AddLog($"���🚀 � 已启动: {prog}");
-            }
-            catch (Exception ex) { AddLog($"��❌ 启动失败: {ex.Message}"); }
-        }
-
-        private void BtnNotify_Click(object sender, RoutedEventArgs e)
-        {
-            string title = TxtNotifyTitle.Text;
-            string text = TxtNotifyText.Text;
-            try
-            {
-                var t = new System.Threading.Thread(() =>
-                {
-                    System.Windows.Forms.MessageBox.Show(text, title, System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-                });
-                t.SetApartmentState(System.Threading.ApartmentState.STA);
-                t.Start();
-                AddLog($"��🔔 通知已发送: {title}");
-            }
-            catch (Exception ex) { AddLog($"��❌ 通知失败: {ex.Message}"); }
-        }
-
-        private void BtnScreenshot_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var bounds = System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
-                using var bmp = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
-                using (var g = System.Drawing.Graphics.FromImage(bmp))
-                    g.CopyFromScreen(bounds.Location, System.Drawing.Point.Empty, bounds.Size);
-                string path = Path.Combine(Path.GetTempPath(), $"WinRemote_Screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png");
-                bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
-                TxtResult.Text = $"截图已保存到: {path}";
-                AddLog($"���📸 截图已保存: {path}");
-            }
-            catch (Exception ex) { AddLog($"��❌ 截图失败: {ex.Message}"); }
+            return int.TryParse(s, out int v) ? v : def;
         }
 
         #endregion
-    }
-
-    // AgentClient 的�鼠标 P/Invoke �� 暴�露为静态方法，方便 UI �� 调用
-    public partial class AgentClient
-    {
-        public const int MOUSEEVENTF_LEFTDOWN = 0x02;
-        public const int MOUSEEVENTF_LEFTUP = 0x04;
-        public const int MOUSEEVENTF_RIGHTDOWN = 0x08;
-        public const int MOUSEEVENTF_RIGHTUP = 0x10;
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        public static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
     }
 }
