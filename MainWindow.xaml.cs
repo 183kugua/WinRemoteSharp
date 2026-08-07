@@ -12,24 +12,24 @@ namespace WinRemoteSharp
     public partial class MainWindow : Window
     {
         private AgentClient? _agent;
-        private readonly Core.ConfigManager _cfgMgr;
+        private readonly Core.Config _config;
         private readonly Core.ServiceManager _svcMgr;
         private TrayManager? _trayMgr;
         private bool _closingToTray = true;
 
         // 画�刷�缓存（走资源，不�硬编码）
-        private MediaBrush? _brushStatusOn;
-        private MediaBrush? _brushStatusOff;
-        private MediaBrush? _brushStatusErr;
-        private MediaBrush? _brushStatusWarn;
+        private Brush? _brushStatusOn;
+        private Brush? _brushStatusOff;
+        private Brush? _brushStatusErr;
+        private Brush? _brushStatusWarn;
 
         public bool IsConnected => _agent?.IsConnected == true;
 
         public MainWindow()
         {
             InitializeComponent();
-            _cfgMgr = new Core.ConfigManager();
-            _cfgMgr.Load();
+            _config = Core.ConfigManager.Load();
+            
             _svcMgr = new Core.ServiceManager();
 
             // �缓存画�刷
@@ -181,9 +181,9 @@ namespace WinRemoteSharp
             }
 
             SyncUIToConfig();
-            _cfgMgr.Save();
+            Core.ConfigManager.Save(_config);
 
-            _agent = new AgentClient(_cfgMgr.Config);
+            _agent = new AgentClient(_config);
             _agent.OnLog += AddLog;
             _agent.OnConnectionChanged += (connected) =>
             {
@@ -276,7 +276,7 @@ namespace WinRemoteSharp
 
         private void LoadSettingsToUI()
         {
-            var c = _cfgMgr.Config;
+            var c = _config;
             SetServer.Text = c.ServerUrl;
             SetHeartbeat.Text = c.HeartbeatIntervalSec.ToString();
             SetTimeout.Text = c.CommandTimeoutSec.ToString();
@@ -290,7 +290,7 @@ namespace WinRemoteSharp
 
         private void SyncUIToConfig()
         {
-            var c = _cfgMgr.Config;
+            var c = _config;
             c.ServerUrl = TxtServer.Text.Trim();
             c.AgentId = TxtAgentId.Text.Trim();
             c.Token = TxtToken.Password;
@@ -306,12 +306,12 @@ namespace WinRemoteSharp
         private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
         {
             SyncUIToConfig();
-            _cfgMgr.Save();
+            Core.ConfigManager.Save(_config);
             
             // 如果 Agent 正在运行，更新其配置
             if (_agent != null)
             {
-                _agent.UpdateConfig(_cfgMgr.Config);
+                _agent.UpdateConfig(_config);
                 AddLog("���💾 设置已保存并应用到运行中的 Agent");
             }
             else
@@ -323,7 +323,7 @@ namespace WinRemoteSharp
 
         private void BtnResetSettings_Click(object sender, RoutedEventArgs e)
         {
-            _cfgMgr.ApplyDefaults();
+            Core.ConfigManager.ApplyDefaults(_config);
             LoadSettingsToUI();
             AddLog("���🔄 � 已�恢复默认设置");
         }
@@ -480,7 +480,7 @@ namespace WinRemoteSharp
                     using var proc = Process.Start(psi)!;
                     string output = proc.StandardOutput.ReadToEnd();
                     string err = proc.StandardError.ReadToEnd();
-                    proc.WaitForExit(_cfgMgr.Config.CommandTimeoutSec * 1000);
+                    proc.WaitForExit(_config.CommandTimeoutSec * 1000);
                     string result = string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err;
                     Dispatcher.Invoke(() => { TxtResult.Text = result; });
                     AddLog($"��✅ �执行完成 ({result.Length} 字节)");
@@ -491,7 +491,7 @@ namespace WinRemoteSharp
 
         private void BtnSendKeys_Click(object sender, RoutedEventArgs e)
         {
-            if (!_cfgMgr.Config.EnableKeyboard) { AddLog("��⚠��️ �� 键�盘模�拟未启用"); return; }
+            if (!_config.EnableKeyboard) { AddLog("��⚠��️ �� 键�盘模�拟未启用"); return; }
             string keys = TxtSendKeys.Text;
             try
             {
@@ -503,7 +503,7 @@ namespace WinRemoteSharp
 
         private void BtnMouseClick_Click(object sender, RoutedEventArgs e)
         {
-            if (!_cfgMgr.Config.EnableMouse) { AddLog("��⚠��️ �� 鼠标模�拟未启用"); return; }
+            if (!_config.EnableMouse) { AddLog("��⚠��️ �� 鼠标模�拟未启用"); return; }
             if (int.TryParse(TxtMouseX.Text, out int x) && int.TryParse(TxtMouseY.Text, out int y))
             {
                 System.Windows.Forms.Cursor.Position = new System.Drawing.Point(x, y);
@@ -515,7 +515,7 @@ namespace WinRemoteSharp
 
         private void BtnMouseRight_Click(object sender, RoutedEventArgs e)
         {
-            if (!_cfgMgr.Config.EnableMouse) { AddLog("��⚠��️ �� 鼠标模�拟未启用"); return; }
+            if (!_config.EnableMouse) { AddLog("��⚠��️ �� 鼠标模�拟未启用"); return; }
             AgentClient.mouse_event(AgentClient.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
             AgentClient.mouse_event(AgentClient.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
             AddLog("���🖱 右�键点击");
@@ -527,7 +527,7 @@ namespace WinRemoteSharp
             if (string.IsNullOrEmpty(path)) return;
             try
             {
-                if (!_cfgMgr.Config.FileReadWhitelist.Any(w => Path.GetFullPath(path).StartsWith(Path.GetFullPath(w), StringComparison.OrdinalIgnoreCase)))
+                if (!_config.FileReadWhitelist.Any(w => Path.GetFullPath(path).StartsWith(Path.GetFullPath(w), StringComparison.OrdinalIgnoreCase)))
                 {
                     AddLog("��⚠��️ � 路径不在白名单内");
                     return;
