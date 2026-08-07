@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -15,9 +16,8 @@ namespace WinRemoteSharp
     public class TrayManager : IDisposable
     {
         private readonly MainWindow _mainWindow;
-        private System.Drawing.Bitmap _trayIconBitmap;
+        private System.Drawing.Bitmap? _trayIconBitmap;
         private IntPtr _hicon = IntPtr.Zero;
-        private uint _taskbarRestartMessage;
         private bool _added;
         private bool _disposed;
 
@@ -135,8 +135,7 @@ namespace WinRemoteSharp
         private const uint TPM_BOTTOMALIGN = 0x0020;
         private const uint TPM_LEFTALIGN = 0x0000;
 
-        private IntPtr _msgWindow = IntPtr.Zero;
-        private System.Windows.Interop.HwndSource _hwndSource;
+        private System.Windows.Interop.HwndSource? _hwndSource;
         private bool _autoStartEnabled;
 
         public TrayManager(MainWindow mainWindow)
@@ -176,10 +175,7 @@ namespace WinRemoteSharp
             }
             else if (msg == WM_USER + 0x101)
             {
-                if (_added)
-                {
-                    RemoveTrayIcon();
-                }
+                if (_added) RemoveTrayIcon();
                 AddTrayIcon();
                 handled = true;
             }
@@ -445,13 +441,13 @@ namespace WinRemoteSharp
             if (_trayIconBitmap != null)
             {
                 _trayIconBitmap.Dispose();
-                _trayIconBitmap = null!;
+                _trayIconBitmap = null;
             }
 
             if (_hwndSource != null)
             {
                 _hwndSource.RemoveHook(WndProc);
-                _hwndSource = null!;
+                _hwndSource = null;
             }
         }
     }
