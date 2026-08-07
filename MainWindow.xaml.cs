@@ -1,4 +1,5 @@
 using System;
+#nullable enable
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -453,8 +454,8 @@ namespace WinRemoteSharp
 
         #region 托盘回调
 
-        public void TrayConnect() => Dispatcher.Invoke(async () => BtnConnect_Click(null!, null!));
-        public void TrayDisconnect() => Dispatcher.Invoke(async () => BtnDisconnect_Click(null!, null!));
+        public void TrayConnect() => Dispatcher.Invoke(() => BtnConnect_Click(null!, null!));
+        public void TrayDisconnect() => Dispatcher.Invoke(() => BtnDisconnect_Click(null!, null!));
         public void TrayInstallService() => Dispatcher.Invoke(() => BtnSvcInstall_Click(null!, null!));
         public void TrayUninstallService() => Dispatcher.Invoke(() => BtnSvcUninstall_Click(null!, null!));
         public void TrayStartService() => Dispatcher.Invoke(() => BtnSvcStart_Click(null!, null!));
