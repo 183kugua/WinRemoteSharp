@@ -29,7 +29,6 @@ namespace WinRemoteSharp.Core
         public bool IsNssmAvailable()
         {
             if (File.Exists(_nssmPath)) return true;
-            // 尝试 PATH
             try
             {
                 var psi = new ProcessStartInfo("where", "nssm")
@@ -76,12 +75,10 @@ namespace WinRemoteSharp.Core
             if (!IsNssmAvailable()) return "❌ NSSM 未找到，请先安装 NSSM";
             try
             {
-                string args = $"install {_serviceName} \"{_exePath}\" --mode agent";
+                string args = $"install {_serviceName} \"{_exePath}\" --headless";
                 var (ok, output) = RunNssm(args);
                 if (!ok) return $"❌ 安装失败: {output}";
-                // 设置自动启动
                 RunNssm($"set {_serviceName} Start SERVICE_AUTO_START");
-                // 设置工作目录
                 string? workDir = Path.GetDirectoryName(_exePath);
                 if (!string.IsNullOrEmpty(workDir))
                     RunNssm($"set {_serviceName} AppDirectory \"{workDir}\"");
@@ -95,7 +92,6 @@ namespace WinRemoteSharp.Core
             if (!IsNssmAvailable()) return "❌ NSSM 未找到";
             try
             {
-                // 先停止
                 RunNssm($"stop {_serviceName}");
                 var (ok, output) = RunNssm($"remove {_serviceName} confirm");
                 return ok ? $"✅ 服务 [{_serviceName}] 已卸载" : $"❌ 卸载失败: {output}";
@@ -172,7 +168,6 @@ namespace WinRemoteSharp.Core
         {
             if (_disposed) return;
             _disposed = true;
-            // 无非托管资源需要清理
         }
     }
 }
