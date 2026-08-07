@@ -11,12 +11,10 @@ namespace WinRemoteSharp
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            // 全局未捕获异常 -> 落地日志
             AppDomain.CurrentDomain.UnhandledException += (s, args) => LogException(args.ExceptionObject as Exception, "AppDomain");
             DispatcherUnhandledException += (s, args) => { LogException(args.Exception, "Dispatcher"); args.Handled = true; };
             TaskScheduler.UnobservedTaskException += (s, args) => { LogException(args.Exception, "TaskScheduler"); args.SetObserved(); };
 
-            // 检查命令行参数（必须在 base.OnStartup 之前，因为 XAML StartupUri 可能自动建窗）
             bool startMinimized = false;
             bool headless = false;
 
@@ -31,25 +29,17 @@ namespace WinRemoteSharp
 
             if (headless)
             {
-                // 无头模式：不调用 base.OnStartup（绕过 XAML StartupUri 自动建窗），
-                // 设置 OnExplicitShutdown 防止 WPF 在没有窗口时自动退出。
                 this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
                 HeadlessRunner.RunAsync(e.Args).GetAwaiter().GetResult();
                 this.Shutdown();
                 return;
             }
 
-            // GUI 模式：让 WPF 按 XAML StartupUri 自动创建 MainWindow。
-            // 注意：base.OnStartup 返回后 this.MainWindow 可能尚未赋值（窗口创建是异步的），
-            // 因此通过 Activated 事件延迟获取窗口引用。
             base.OnStartup(e);
 
-            // 通过 Activated 事件获取 WPF 自动创建的 MainWindow
             this.Activated += (s, ev) =>
             {
-                // 只处理第一次激活
                 if (_trayManager != null) return;
-
                 if (this.MainWindow is MainWindow mainWindow)
                 {
                     try
@@ -61,7 +51,6 @@ namespace WinRemoteSharp
                     {
                         LogException(ex, "TrayManager");
                     }
-
                     if (startMinimized)
                     {
                         mainWindow.Hide();
@@ -80,7 +69,7 @@ namespace WinRemoteSharp
                 string line = "[" + time + "] [" + source + "]\n" + ex.ToString() + "\n\n";
                 File.AppendAllText(path, line);
             }
-            catch { /* ignore */ }
+            catch { }
         }
 
         protected override void OnExit(ExitEventArgs e)
