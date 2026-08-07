@@ -33,10 +33,19 @@ namespace WinRemoteSharp
                 return;
             }
 
+            // 先初始化 WPF（创建主窗口）
             base.OnStartup(e);
 
             if (this.MainWindow is MainWindow mw)
             {
+                // TrayManager 现在使用独立 WinForms 线程，可以在任何时候创建
+                try
+                {
+                    _trayManager = new TrayManager(mw);
+                    mw.SetTrayManager(_trayManager);
+                }
+                catch (Exception ex) { Log(ex); }
+
                 if (hideWindow)
                 {
                     mw.Hide();
@@ -45,26 +54,18 @@ namespace WinRemoteSharp
                 {
                     mw.Show();
                 }
-
-                mw.Loaded += (s, args) =>
-                {
-                    mw.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        try
-                        {
-                            _trayManager = new TrayManager(mw);
-                            mw.SetTrayManager(_trayManager);
-                        }
-                        catch (Exception ex) { Log(ex); }
-                    }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-                };
             }
         }
 
         private void Log(Exception ex)
         {
             if (ex == null) return;
-            try { File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log"), $"[{DateTime.Now:HH:mm:ss}] {ex}\n\n"); }
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log"),
+                    $"[{DateTime.Now:HH:mm:ss}] {ex}\n\n");
+            }
             catch { }
         }
 
