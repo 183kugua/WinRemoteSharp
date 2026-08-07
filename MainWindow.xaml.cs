@@ -37,8 +37,14 @@ namespace WinRemoteSharp
             RefreshSystemInfo();
             RefreshServiceStatus();
             AddLog("WinRemote Agent V1.2 已就绪");
-            Activate();
-            try { TxtServerUrl.Focus(); } catch { }
+
+            string url = TxtServerUrl.Text.Trim();
+            if (!string.IsNullOrEmpty(url) && url.StartsWith("ws"))
+            {
+                AddLog("正在自动连接服务器...");
+                Dispatcher.BeginInvoke(new Action(() => BtnConnect_Click(null, null)),
+                    System.Windows.Threading.DispatcherPriority.Background);
+            }
         }
 
         private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -47,7 +53,7 @@ namespace WinRemoteSharp
             {
                 e.Cancel = true;
                 Hide();
-                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托盘，双击显示");
+                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托盘，右键退出");
             }
             else
             {
@@ -58,12 +64,12 @@ namespace WinRemoteSharp
 
         public void AddLog(string msg)
         {
-            var line = $"[{DateTime.Now:HH:mm:ss}] {msg}";
+            string line = $"[{DateTime.Now:HH:mm:ss}] {msg}";
             Dispatcher.Invoke(() =>
             {
-                TxtLog.AppendText(line + "\n");
+                TxtLog.AppendText(line + Environment.NewLine);
                 TxtLog.ScrollToEnd();
-                TxtFullLog.AppendText(line + "\n");
+                TxtFullLog.AppendText(line + Environment.NewLine);
                 TxtFullLog.ScrollToEnd();
             });
         }
