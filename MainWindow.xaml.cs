@@ -38,6 +38,14 @@ namespace WinRemoteSharp
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            // 确保窗口可见并置顶（防止某些情况下界面不显示）
+            if (Visibility != Visibility.Visible)
+                Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            Topmost = true;
+            Topmost = false; // 取消置顶，让它回到正常层级
+            
             LoadSettingsToUI();
             RefreshSystemInfo();
             RefreshServiceStatus();

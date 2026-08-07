@@ -40,7 +40,7 @@
         </Storyboard>
         
         <Storyboard x:Key="TextBoxGlowIn">
-            <ColorAnimation Storyboard.TargetProperty="(Border.BorderColor).(SolidColorBrush.Color)"
+            <ColorAnimation Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
                            To="{StaticResource MintMain}" Duration="0:0:0.2"/>
             <DoubleAnimation Storyboard.TargetProperty="(Border.BorderThickness).(Thickness.Left)"
                            To="2" Duration="0:0:0.2"/>
@@ -53,7 +53,7 @@
         </Storyboard>
         
         <Storyboard x:Key="TextBoxGlowOut">
-            <ColorAnimation Storyboard.TargetProperty="(Border.BorderColor).(SolidColorBrush.Color)"
+            <ColorAnimation Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
                            To="{StaticResource CardBorder}" Duration="0:0:0.2"/>
             <DoubleAnimation Storyboard.TargetProperty="(Border.BorderThickness).(Thickness.Left)"
                            To="1.5" Duration="0:0:0.2"/>
