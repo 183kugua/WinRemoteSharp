@@ -392,9 +392,7 @@ namespace WinRemoteSharp
             if (int.TryParse(TxtMaxReadBytes?.Text, out int mr)) c.MaxReadBytes = mr;
             c.BlockedKeywords = TxtBlacklist?.Text ?? "";
             c.FileReadWhitelist = (TxtWhitelist?.Text ?? "")
-                .Split(new[] { '
-', '
-' }, StringSplitOptions.RemoveEmptyEntries);
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         }
 
         private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)
