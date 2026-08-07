@@ -154,7 +154,7 @@ namespace WinRemoteSharp
                 if (string.IsNullOrEmpty(exe)) return;
                 using var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
                 if (item.Checked)
-                    k?.SetValue("WinRemoteAgent", $"\"{exe}\" --minimized");
+                    k?.SetValue("WinRemoteAgent", $"\"{exe}\" --show");
                 else
                     k?.DeleteValue("WinRemoteAgent", false);
             }
