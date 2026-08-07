@@ -45,9 +45,19 @@ namespace WinRemoteSharp
             // 获取 XAML 自动创建的 MainWindow（不要手动 new，否则会创建两个）
             var mainWindow = (MainWindow)this.MainWindow;
 
-            // 创建托盘管理器
-            _trayManager = new TrayManager(mainWindow);
-            mainWindow.SetTrayManager(_trayManager);
+            // 创建托盘管理器（延迟到窗口加载完成后初始化托盘，避免过早创建 NotifyIcon 导致崩溃）
+            mainWindow.Loaded += (s, ev) =>
+            {
+                try
+                {
+                    _trayManager = new TrayManager(mainWindow);
+                    mainWindow.SetTrayManager(_trayManager);
+                }
+                catch (Exception ex)
+                {
+                    LogException(ex, "TrayManager");
+                }
+            };
 
             // 如果指定了最小化启动，隐藏窗口
             if (startMinimized)
