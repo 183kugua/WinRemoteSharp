@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using WinRemoteSharp.Core;
 
@@ -24,7 +25,6 @@ namespace WinRemoteSharp
         {
             InitializeComponent();
             
-            // 设置窗口图标
             try
             {
                 var iconUri = new Uri("pack://application:,,,/Resources/App.ico");
@@ -47,18 +47,18 @@ namespace WinRemoteSharp
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 确保窗口可见并置顶（防止某些情况下界面不显示）
-            if (Visibility != Visibility.Visible)
-                Show();
             WindowState = WindowState.Normal;
-            Activate();
-            Topmost = true;
-            Topmost = false; // 取消置顶，让它回到正常层级
             
             LoadSettingsToUI();
             RefreshSystemInfo();
             RefreshServiceStatus();
             AddLog("WinRemote Agent V1.2 已就绪");
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Activate();
+                try { TxtServerUrl.Focus(); TxtServerUrl.SelectAll(); } catch { }
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -353,32 +353,26 @@ namespace WinRemoteSharp
         {
             var c = _config;
 
-            // --- 修复：回填连接核心字段（之前缺失，导致 UI 显示空白）---
             TxtServerUrl.Text = c.ServerUrl;
             TxtToken.Password = c.Token;
             TxtAgentId.Text = c.AgentId;
-            // ---
 
-            TxtHeartbeat.Text = c.HeartbeatInterval.ToString();
-            TxtShellTimeout.Text = c.ConnectionTimeout.ToString();
-            TxtMaxOutput.Text = c.MaxOutputBytes.ToString();
-            CmbScreenshotFmt.SelectedIndex = 0;
+            if (TxtHeartbeat != null) TxtHeartbeat.Text = c.HeartbeatInterval.ToString();
+            if (TxtShellTimeout != null) TxtShellTimeout.Text = c.ConnectionTimeout.ToString();
+            if (TxtMaxOutput != null) TxtMaxOutput.Text = c.MaxOutputBytes.ToString();
+            if (CmbScreenshotFmt != null) CmbScreenshotFmt.SelectedIndex = 0;
+            if (TxtScreenshotQuality != null) TxtScreenshotQuality.Text = c.ScreenshotQuality > 0 ? c.ScreenshotQuality.ToString() : "80";
             
-            // 截图设置
-            TxtScreenshotQuality.Text = c.ScreenshotQuality > 0 ? c.ScreenshotQuality.ToString() : "80";
+            if (ChkAllowPowershell != null) ChkAllowPowershell.IsChecked = c.AllowPowerShell;
+            if (ChkAllowWrite != null) ChkAllowWrite.IsChecked = c.AllowWrite;
+            if (ChkAutoReconnect != null) ChkAutoReconnect.IsChecked = c.AutoReconnect;
+            if (ChkStrictWhitelist != null) ChkStrictWhitelist.IsChecked = c.StrictWhitelist;
+            if (ChkPasswordGuard != null) ChkPasswordGuard.IsChecked = c.PasswordGuardEnabled;
+            if (TxtPasswordGuard != null) TxtPasswordGuard.Password = c.PasswordGuard ?? "";
+            if (TxtMaxReadBytes != null) TxtMaxReadBytes.Text = c.MaxReadBytes > 0 ? c.MaxReadBytes.ToString() : "1048576";
             
-            // 安全设置
-            ChkAllowPowershell.IsChecked = c.AllowPowerShell;
-            ChkAllowWrite.IsChecked = c.AllowWrite;
-            ChkAutoReconnect.IsChecked = c.AutoReconnect;
-            ChkStrictWhitelist.IsChecked = c.StrictWhitelist;
-            ChkPasswordGuard.IsChecked = c.PasswordGuardEnabled;
-            TxtPasswordGuard.Password = c.PasswordGuard ?? "";
-            TxtMaxReadBytes.Text = c.MaxReadBytes > 0 ? c.MaxReadBytes.ToString() : "1048576";
-            
-            // 路径白名单 / 黑名单
-            TxtWhitelist.Text = string.Join(Environment.NewLine, _config.FileReadWhitelist ?? Array.Empty<string>());
-            TxtBlacklist.Text = c.BlockedKeywords ?? "";
+            if (TxtWhitelist != null) TxtWhitelist.Text = string.Join(Environment.NewLine, _config.FileReadWhitelist ?? Array.Empty<string>());
+            if (TxtBlacklist != null) TxtBlacklist.Text = c.BlockedKeywords ?? "";
         }
 
         private void SyncUIToConfig()
