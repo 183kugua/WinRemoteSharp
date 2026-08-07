@@ -10,78 +10,214 @@ using System.Windows.Forms;
 namespace WinRemoteSharp
 {
     /// <summary>
-    /// 系统托盘管理器 - 支持最小化到托盘、右键菜单、开机自启
+    /// 系统托盘管理器 - 纯 Win32 Shell_NotifyIcon 实现，彻底绕过 WPF/WinForms 互操作问题。
     /// </summary>
     public class TrayManager : IDisposable
     {
-        private readonly NotifyIcon _notifyIcon;
-        private readonly ContextMenuStrip _contextMenu;
         private readonly MainWindow _mainWindow;
-        /// <summary>保持 bitmap 存活，防止 Icon.FromHandle 创建的 HICON 失效。</summary>
         private System.Drawing.Bitmap _trayIconBitmap;
-        private bool _disposed = false;
+        private IntPtr _hicon = IntPtr.Zero;
+        private uint _taskbarRestartMessage;
+        private bool _added;
+        private bool _disposed;
+
+        // Win32 常量
+        private const int WM_LBUTTONDBLCLK = 0x0203;
+        private const int WM_RBUTTONUP = 0x0205;
+        private const int WM_USER = 0x0400;
+        private const int NIM_ADD = 0x00000000;
+        private const int NIM_MODIFY = 0x00000001;
+        private const int NIM_DELETE = 0x00000002;
+        private const int NIM_SETVERSION = 0x00000004;
+        private const int NIF_MESSAGE = 0x00000001;
+        private const int NIF_ICON = 0x00000002;
+        private const int NIF_TIP = 0x00000004;
+        private const int NIF_INFO = 0x00000010;
+        private const int NIIF_INFO = 0x00000001;
+        private const int NOTIFYICON_VERSION_4 = 4;
+
+        // 自定义托盘回调消息 ID
+        private const int WM_TRAYICON = WM_USER + 0x100;
+
+        // 右键菜单命令 ID
+        private const int CMD_SHOW = 1001;
+        private const int CMD_CONNECT = 1002;
+        private const int CMD_DISCONNECT = 1003;
+        private const int CMD_SVC_INSTALL = 1004;
+        private const int CMD_SVC_UNINSTALL = 1005;
+        private const int CMD_SVC_START = 1006;
+        private const int CMD_SVC_STOP = 1007;
+        private const int CMD_SVC_STATUS = 1008;
+        private const int CMD_AUTOSTART = 1009;
+        private const int CMD_ABOUT = 1010;
+        private const int CMD_LOGS = 1011;
+        private const int CMD_LOGDIR = 1012;
+        private const int CMD_EXIT = 1013;
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct NOTIFYICONDATA
+        {
+            public int cbSize;
+            public IntPtr hWnd;
+            public uint uID;
+            public uint uFlags;
+            public uint uCallbackMessage;
+            public IntPtr hIcon;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string szTip;
+            public uint dwState;
+            public uint dwStateMask;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string szInfo;
+            public uint uTimeoutOrVersion;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+            public string szInfoTitle;
+            public uint dwInfoFlags;
+            public Guid guidItem;
+            public IntPtr hBalloonIcon;
+        }
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-        private static extern int SHGetFolderPath(IntPtr hwndOwner, int nFolder, IntPtr hToken, uint dwFlags, System.Text.StringBuilder lpszPath);
+        private static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATA lpData);
 
-        private const int CSIDL_STARTUP = 7;
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr CreateWindowEx(
+            uint dwExStyle, string lpClassName, string lpWindowName,
+            uint dwStyle, int x, int y, int nWidth, int nHeight,
+            IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool DestroyWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr DefWindowProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetSubMenu(IntPtr hMenu, int nPos);
+
+        [DllImport("user32.dll")]
+        private static extern int TrackPopupMenu(IntPtr hMenu, uint uFlags, int x, int y, int nReserved, IntPtr hWnd, IntPtr prcRect);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CreatePopupMenu();
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool AppendMenu(IntPtr hMenu, uint uFlags, uint uIDNewItem, string lpNewItem);
+
+        [DllImport("user32.dll")]
+        private static extern bool DestroyMenu(IntPtr hMenu);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool InsertMenu(IntPtr hMenu, uint uPosition, uint uFlags, uint uIDNewItem, string lpNewItem);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetMenuDefaultItem(IntPtr hMenu, uint uItem, uint fByPos);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        private const uint MF_STRING = 0x00000000;
+        private const uint MF_SEPARATOR = 0x00000800;
+        private const uint MF_DEFAULT = 0x00001000;
+        private const uint MF_CHECKED = 0x00000008;
+        private const uint MF_UNCHECKED = 0x00000000;
+        private const uint TPM_RIGHTBUTTON = 0x0002;
+        private const uint TPM_BOTTOMALIGN = 0x0020;
+        private const uint TPM_LEFTALIGN = 0x0000;
+
+        private IntPtr _msgWindow = IntPtr.Zero;
+        private System.Windows.Interop.HwndSource _hwndSource;
+        private bool _autoStartEnabled;
 
         public TrayManager(MainWindow mainWindow)
         {
             _mainWindow = mainWindow;
+            _autoStartEnabled = IsAutoStartEnabled();
 
-            _notifyIcon = new NotifyIcon
+            _mainWindow.Dispatcher.Invoke(() =>
             {
-                Visible = true,
-                Text = "WinRemote Agent",
-                Icon = CreateTrayIcon()
-            };
+                var helper = new System.Windows.Interop.WindowInteropHelper(_mainWindow);
+                helper.EnsureHandle();
+                _hwndSource = System.Windows.Interop.HwndSource.FromHwnd(helper.Handle);
+                if (_hwndSource != null)
+                {
+                    _hwndSource.AddHook(WndProc);
+                }
 
-            _contextMenu = new ContextMenuStrip();
-            BuildContextMenu();
-            _notifyIcon.ContextMenuStrip = _contextMenu;
-
-            _notifyIcon.DoubleClick += (s, e) => ToggleWindow();
-            _mainWindow.StateChanged += (s, e) => UpdateTrayTooltip();
+                _hicon = CreateTrayIconHandle();
+                AddTrayIcon();
+            });
         }
 
-        private Icon CreateTrayIcon()
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            // 优先：EmbeddedResource（.csproj 中配置为 <EmbeddedResource>）
+            if (msg == WM_TRAYICON)
+            {
+                int lParamLow = (int)lParam & 0xFFFF;
+                if (lParamLow == WM_LBUTTONDBLCLK)
+                {
+                    ToggleWindow();
+                }
+                else if (lParamLow == WM_RBUTTONUP)
+                {
+                    ShowContextMenu();
+                }
+                handled = true;
+            }
+            else if (msg == WM_USER + 0x101)
+            {
+                if (_added)
+                {
+                    RemoveTrayIcon();
+                }
+                AddTrayIcon();
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        private IntPtr CreateTrayIconHandle()
+        {
+            Stream? stream = null;
             try
             {
                 var assembly = Assembly.GetExecutingAssembly();
-                using (var stream = assembly.GetManifestResourceStream("WinRemoteSharp.Resources.DialogIcon.png"))
-                {
-                    if (stream != null)
-                    {
-                        _trayIconBitmap = new System.Drawing.Bitmap(stream);
-                        return System.Drawing.Icon.FromHandle(_trayIconBitmap.GetHicon());
-                    }
-                }
+                stream = assembly.GetManifestResourceStream("WinRemoteSharp.Resources.DialogIcon.png");
             }
-            catch (Exception ex)
+            catch { }
+
+            if (stream == null)
             {
-                Debug.WriteLine($"[TrayManager] EmbeddedResource load failed: {ex.Message}");
+                try
+                {
+                    var uri = new Uri("pack://application:,,,/Resources/DialogIcon.png");
+                    var si = System.Windows.Application.GetResourceStream(uri);
+                    stream = si?.Stream;
+                }
+                catch { }
             }
 
-            // 回退：WPF Resource（pack:// 方式）
-            try
+            if (stream != null)
             {
-                var uri = new Uri("pack://application:,,,/Resources/DialogIcon.png");
-                var streamInfo = System.Windows.Application.GetResourceStream(uri);
-                if (streamInfo?.Stream != null)
+                try
                 {
-                    _trayIconBitmap = new System.Drawing.Bitmap(streamInfo.Stream);
-                    return System.Drawing.Icon.FromHandle(_trayIconBitmap.GetHicon());
+                    _trayIconBitmap = new System.Drawing.Bitmap(stream);
+                    return _trayIconBitmap.GetHicon();
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[TrayManager] WPF Resource load failed: {ex.Message}");
+                catch { }
+                finally { stream.Dispose(); }
             }
 
-            // 最终回退：生成绿色盾牌图标
             try
             {
                 _trayIconBitmap = new System.Drawing.Bitmap(32, 32);
@@ -99,69 +235,112 @@ namespace WinRemoteSharp
                         g.DrawPolygon(pen, pts);
                     }
                 }
-                return System.Drawing.Icon.FromHandle(_trayIconBitmap.GetHicon());
+                return _trayIconBitmap.GetHicon();
             }
             catch { }
 
-            return SystemIcons.Application;
+            return SystemIcons.Application.Handle;
         }
 
-        private void BuildContextMenu()
+        private void AddTrayIcon()
         {
-            _contextMenu.Items.Clear();
+            if (_hwndSource == null) return;
+            var hwnd = _hwndSource.Handle;
+            if (hwnd == IntPtr.Zero) return;
 
-            var showHideItem = new ToolStripMenuItem("显示窗口");
-            showHideItem.Click += (s, e) => ToggleWindow();
-            _contextMenu.Items.Add(showHideItem);
+            var nid = new NOTIFYICONDATA();
+            nid.cbSize = Marshal.SizeOf(nid);
+            nid.hWnd = hwnd;
+            nid.uID = 1;
+            nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+            nid.uCallbackMessage = WM_TRAYICON;
+            nid.hIcon = _hicon;
+            nid.szTip = "WinRemote Agent";
 
-            _contextMenu.Items.Add(new ToolStripSeparator());
+            Shell_NotifyIcon(NIM_ADD, ref nid);
 
-            var connectItem = new ToolStripMenuItem("连接服务器");
-            connectItem.Click += (s, e) => _mainWindow.TrayConnect();
-            _contextMenu.Items.Add(connectItem);
+            nid.uTimeoutOrVersion = NOTIFYICON_VERSION_4;
+            Shell_NotifyIcon(NIM_SETVERSION, ref nid);
 
-            var disconnectItem = new ToolStripMenuItem("断开连接");
-            disconnectItem.Click += (s, e) => _mainWindow.TrayDisconnect();
-            _contextMenu.Items.Add(disconnectItem);
+            _added = true;
+            Debug.WriteLine("[TrayManager] Shell_NotifyIcon NIM_ADD succeeded");
+        }
 
-            _contextMenu.Items.Add(new ToolStripSeparator());
+        private void RemoveTrayIcon()
+        {
+            if (_hwndSource == null || !_added) return;
+            var hwnd = _hwndSource.Handle;
+            if (hwnd == IntPtr.Zero) return;
 
-            var serviceMenu = new ToolStripMenuItem("服务管理");
-            serviceMenu.DropDownItems.Add("安装服务", null, (s, e) => _mainWindow.TrayInstallService());
-            serviceMenu.DropDownItems.Add("卸载服务", null, (s, e) => _mainWindow.TrayUninstallService());
-            serviceMenu.DropDownItems.Add(new ToolStripSeparator());
-            serviceMenu.DropDownItems.Add("启动服务", null, (s, e) => _mainWindow.TrayStartService());
-            serviceMenu.DropDownItems.Add("停止服务", null, (s, e) => _mainWindow.TrayStopService());
-            serviceMenu.DropDownItems.Add("查看状态", null, (s, e) => _mainWindow.TrayServiceStatus());
-            _contextMenu.Items.Add(serviceMenu);
+            var nid = new NOTIFYICONDATA();
+            nid.cbSize = Marshal.SizeOf(nid);
+            nid.hWnd = hwnd;
+            nid.uID = 1;
+            Shell_NotifyIcon(NIM_DELETE, ref nid);
+            _added = false;
+        }
 
-            _contextMenu.Items.Add(new ToolStripSeparator());
+        private void ShowContextMenu()
+        {
+            var hMenu = CreatePopupMenu();
 
-            var autoStartItem = new ToolStripMenuItem("开机自启");
-            autoStartItem.CheckOnClick = true;
-            autoStartItem.Checked = IsAutoStartEnabled();
-            autoStartItem.Click += (s, e) => ToggleAutoStart(autoStartItem);
-            _contextMenu.Items.Add(autoStartItem);
+            AppendMenu(hMenu, MF_STRING | MF_DEFAULT, CMD_SHOW, "显示窗口");
+            AppendMenu(hMenu, MF_SEPARATOR, 0, "");
+            AppendMenu(hMenu, MF_STRING, CMD_CONNECT, "连接服务器");
+            AppendMenu(hMenu, MF_STRING, CMD_DISCONNECT, "断开连接");
+            AppendMenu(hMenu, MF_SEPARATOR, 0, "");
 
-            _contextMenu.Items.Add(new ToolStripSeparator());
+            var hSvcMenu = CreatePopupMenu();
+            AppendMenu(hSvcMenu, MF_STRING, CMD_SVC_INSTALL, "安装服务");
+            AppendMenu(hSvcMenu, MF_STRING, CMD_SVC_UNINSTALL, "卸载服务");
+            AppendMenu(hSvcMenu, MF_SEPARATOR, 0, "");
+            AppendMenu(hSvcMenu, MF_STRING, CMD_SVC_START, "启动服务");
+            AppendMenu(hSvcMenu, MF_STRING, CMD_SVC_STOP, "停止服务");
+            AppendMenu(hSvcMenu, MF_STRING, CMD_SVC_STATUS, "查看状态");
+            AppendMenu(hMenu, MF_STRING, (uint)hSvcMenu, "服务管理");
 
-            var aboutItem = new ToolStripMenuItem("关于");
-            aboutItem.Click += (s, e) => _mainWindow.TrayCheckUpdate();
-            _contextMenu.Items.Add(aboutItem);
+            AppendMenu(hMenu, MF_SEPARATOR, 0, "");
+            AppendMenu(hMenu, MF_STRING | (_autoStartEnabled ? MF_CHECKED : MF_UNCHECKED), CMD_AUTOSTART, "开机自启");
+            AppendMenu(hMenu, MF_SEPARATOR, 0, "");
+            AppendMenu(hMenu, MF_STRING, CMD_ABOUT, "关于");
+            AppendMenu(hMenu, MF_STRING, CMD_LOGS, "刷新日志");
+            AppendMenu(hMenu, MF_STRING, CMD_LOGDIR, "打开日志目录");
+            AppendMenu(hMenu, MF_SEPARATOR, 0, "");
+            AppendMenu(hMenu, MF_STRING, CMD_EXIT, "退出");
 
-            var refreshLogsItem = new ToolStripMenuItem("刷新日志");
-            refreshLogsItem.Click += (s, e) => _mainWindow.TrayRefreshLogs();
-            _contextMenu.Items.Add(refreshLogsItem);
+            GetCursorPos(out POINT pt);
+            SetForegroundWindow(_hwndSource!.Handle);
 
-            var openLogDirItem = new ToolStripMenuItem("打开日志目录");
-            openLogDirItem.Click += (s, e) => _mainWindow.TrayOpenLogDir();
-            _contextMenu.Items.Add(openLogDirItem);
+            int cmd = TrackPopupMenu(hMenu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_LEFTALIGN,
+                pt.X, pt.Y, 0, _hwndSource!.Handle, IntPtr.Zero);
 
-            _contextMenu.Items.Add(new ToolStripSeparator());
+            DestroyMenu(hMenu);
+            DestroyMenu(hSvcMenu);
 
-            var exitItem = new ToolStripMenuItem("退出");
-            exitItem.Click += (s, e) => ExitApplication();
-            _contextMenu.Items.Add(exitItem);
+            if (cmd > 0) HandleMenuCommand(cmd);
+        }
+
+        private void HandleMenuCommand(int cmd)
+        {
+            switch (cmd)
+            {
+                case CMD_SHOW: ToggleWindow(); break;
+                case CMD_CONNECT: _mainWindow.TrayConnect(); break;
+                case CMD_DISCONNECT: _mainWindow.TrayDisconnect(); break;
+                case CMD_SVC_INSTALL: _mainWindow.TrayInstallService(); break;
+                case CMD_SVC_UNINSTALL: _mainWindow.TrayUninstallService(); break;
+                case CMD_SVC_START: _mainWindow.TrayStartService(); break;
+                case CMD_SVC_STOP: _mainWindow.TrayStopService(); break;
+                case CMD_SVC_STATUS: _mainWindow.TrayServiceStatus(); break;
+                case CMD_AUTOSTART:
+                    _autoStartEnabled = !_autoStartEnabled;
+                    ToggleAutoStart(_autoStartEnabled);
+                    break;
+                case CMD_ABOUT: _mainWindow.TrayCheckUpdate(); break;
+                case CMD_LOGS: _mainWindow.TrayRefreshLogs(); break;
+                case CMD_LOGDIR: _mainWindow.TrayOpenLogDir(); break;
+                case CMD_EXIT: ExitApplication(); break;
+            }
         }
 
         private void ToggleWindow()
@@ -181,30 +360,39 @@ namespace WinRemoteSharp
             });
         }
 
-        private void UpdateTrayTooltip()
+        public void ShowBalloonTip(string title, string message)
         {
-            _mainWindow.Dispatcher.Invoke(() =>
-            {
-                string status = _mainWindow.IsConnected ? "已连接" : "未连接";
-                _notifyIcon.Text = $"WinRemote Agent - {status}";
-            });
-        }
-
-        public void ShowBalloonTip(string title, string message, ToolTipIcon icon = ToolTipIcon.Info)
-        {
-            _notifyIcon.ShowBalloonTip(3000, title, message, icon);
+            if (_hwndSource == null || !_added) return;
+            var nid = new NOTIFYICONDATA();
+            nid.cbSize = Marshal.SizeOf(nid);
+            nid.hWnd = _hwndSource.Handle;
+            nid.uID = 1;
+            nid.uFlags = NIF_INFO;
+            nid.szInfoTitle = title;
+            nid.szInfo = message;
+            nid.dwInfoFlags = NIIF_INFO;
+            nid.uTimeoutOrVersion = 3000;
+            Shell_NotifyIcon(NIM_MODIFY, ref nid);
         }
 
         public void UpdateConnectionStatus(bool connected)
         {
-            UpdateTrayTooltip();
+            if (_hwndSource == null || !_added) return;
+            var nid = new NOTIFYICONDATA();
+            nid.cbSize = Marshal.SizeOf(nid);
+            nid.hWnd = _hwndSource.Handle;
+            nid.uID = 1;
+            nid.uFlags = NIF_TIP;
+            nid.szTip = connected ? "WinRemote Agent - 已连接" : "WinRemote Agent - 未连接";
+            Shell_NotifyIcon(NIM_MODIFY, ref nid);
         }
 
         private bool IsAutoStartEnabled()
         {
             try
             {
-                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false))
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Run", false))
                 {
                     return key?.GetValue("WinRemoteAgent") != null;
                 }
@@ -212,30 +400,29 @@ namespace WinRemoteSharp
             catch { return false; }
         }
 
-        private void ToggleAutoStart(ToolStripMenuItem menuItem)
+        private void ToggleAutoStart(bool enable)
         {
             try
             {
                 string? exePath = Process.GetCurrentProcess().MainModule?.FileName;
                 if (string.IsNullOrEmpty(exePath)) return;
-                
-                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true))
+
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Run", true))
                 {
-                    if (menuItem.Checked)
-                    {
-                        key?.SetValue("WinRemoteAgent", $"\"{exePath}\" --minimized");
-                    }
+                    if (enable)
+                        key?.SetValue("WinRemoteAgent", $"\"{exePath}\" --hide");
                     else
-                    {
                         key?.DeleteValue("WinRemoteAgent", false);
-                    }
                 }
-                _mainWindow.Dispatcher.Invoke(() => _mainWindow.AddLog($"开机自启已{(menuItem.Checked ? "启用" : "禁用")}"));
+                _mainWindow.Dispatcher.Invoke(() =>
+                    _mainWindow.AddLog($"开机自启已{(enable ? "启用" : "禁用")}"));
             }
             catch (Exception ex)
             {
-                menuItem.Checked = !menuItem.Checked;
-                _mainWindow.Dispatcher.Invoke(() => _mainWindow.AddLog($"设置开机自启失败: {ex.Message}"));
+                _autoStartEnabled = !enable;
+                _mainWindow.Dispatcher.Invoke(() =>
+                    _mainWindow.AddLog($"设置开机自启失败: {ex.Message}"));
             }
         }
 
@@ -250,12 +437,21 @@ namespace WinRemoteSharp
 
         public void Dispose()
         {
-            if (!_disposed)
+            if (_disposed) return;
+            _disposed = true;
+
+            RemoveTrayIcon();
+
+            if (_trayIconBitmap != null)
             {
-                _notifyIcon?.Dispose();
-                _contextMenu?.Dispose();
-                _trayIconBitmap?.Dispose();
-                _disposed = true;
+                _trayIconBitmap.Dispose();
+                _trayIconBitmap = null!;
+            }
+
+            if (_hwndSource != null)
+            {
+                _hwndSource.RemoveHook(WndProc);
+                _hwndSource = null!;
             }
         }
     }
