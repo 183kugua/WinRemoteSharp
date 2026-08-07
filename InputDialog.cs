@@ -19,9 +19,6 @@ using WpfVerticalAlignment = System.Windows.VerticalAlignment;
 
 namespace WinRemoteSharp
 {
-    /// <summary>
-    /// 自定义输入对话框 - 无系统标题栏、圆角、自定义图标、主题配色、动画效果
-    /// </summary>
     public class InputDialog : Window
     {
         private WpfTextBox _textBox;
@@ -35,7 +32,6 @@ namespace WinRemoteSharp
         {
             _isPassword = isPassword;
 
-            // 窗口基础设置 - 无边框、圆角、居中、置顶
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
             Background = WpfBrushes.Transparent;
@@ -47,10 +43,9 @@ namespace WinRemoteSharp
             MaxHeight = 300;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             ResizeMode = ResizeMode.NoResize;
-            Topmost = true;
+            Topmost = false;
             ShowInTaskbar = false;
 
-            // 设置自定义图标
             try
             {
                 var iconUri = new Uri("pack://application:,,,/Resources/App.ico");
@@ -59,7 +54,6 @@ namespace WinRemoteSharp
             }
             catch { }
 
-            // 主容器 - 带阴影的圆角边框
             _mainBorder = new Border
             {
                 Background = GetSafeBrush("BgLightBrush", WpfBrushes.White),
@@ -74,19 +68,17 @@ namespace WinRemoteSharp
                     BlurRadius = 20,
                     Opacity = 0.15
                 },
-                Margin = new Thickness(8) // 留空间给阴影
+                Margin = new Thickness(8)
             };
 
             var grid = new Grid { Margin = new Thickness(24) };
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });      // 图标+标题
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });      // 提示文字
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // 输入框
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });      // 按钮区
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // === 第0行：图标 + 标题 ===
             var headerPanel = new StackPanel { Orientation = WpfOrientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
             
-            // 自定义图标
             var iconImage = new WpfImage
             {
                 Width = 28,
@@ -114,7 +106,6 @@ namespace WinRemoteSharp
             Grid.SetRow(headerPanel, 0);
             grid.Children.Add(headerPanel);
 
-            // === 第1行：提示文字 ===
             var promptBlock = new TextBlock
             {
                 Text = prompt,
@@ -127,7 +118,6 @@ namespace WinRemoteSharp
             Grid.SetRow(promptBlock, 1);
             grid.Children.Add(promptBlock);
 
-            // === 第2行：输入框 ===
             var inputContainer = new Border
             {
                 Background = GetSafeBrush("BgCardBrush", WpfBrushes.White),
@@ -174,7 +164,6 @@ namespace WinRemoteSharp
             Grid.SetRow(inputContainer, 2);
             grid.Children.Add(inputContainer);
 
-            // === 第3行：按钮区 ===
             var buttonPanel = new StackPanel
             {
                 Orientation = WpfOrientation.Horizontal,
@@ -182,12 +171,10 @@ namespace WinRemoteSharp
                 Margin = new Thickness(0, 16, 0, 0)
             };
 
-            // 取消按钮
             var cancelButton = CreateButton("取消", false);
             cancelButton.Click += (s, e) => { DialogResult = false; CloseWithAnimation(); };
             buttonPanel.Children.Add(cancelButton);
 
-            // 确定按钮
             var okButton = CreateButton("确定", true);
             okButton.Click += (s, e) => { Confirm(); };
             okButton.Margin = new Thickness(10, 0, 0, 0);
@@ -199,17 +186,14 @@ namespace WinRemoteSharp
             _mainBorder.Child = grid;
             Content = _mainBorder;
 
-            // 入场动画
             Loaded += (s, e) => PlayEntryAnimation();
             
-            // 支持拖拽移动窗口
             MouseLeftButtonDown += (s, e) => 
             {
                 if (e.ButtonState == MouseButtonState.Pressed)
                     DragMove();
             };
 
-            // ESC 关闭
             KeyDown += (s, e) =>
             {
                 if (e.Key == Key.Escape)
@@ -237,7 +221,6 @@ namespace WinRemoteSharp
                 MinWidth = 88
             };
 
-            // 使用 Style + ControlTemplate 代替旧的 FrameworkElementFactory
             var template = new ControlTemplate(typeof(WpfButton));
             var borderFactory = new FrameworkElementFactory(typeof(Border), "Bd");
             borderFactory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(WpfButton.BackgroundProperty));
@@ -253,13 +236,10 @@ namespace WinRemoteSharp
             
             template.VisualTree = borderFactory;
 
-            // 触发器
-            // IsMouseOver
             var mouseOverTrigger = new Trigger { Property = WpfButton.IsMouseOverProperty, Value = true };
             mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, GetSafeBrush(hoverBrushKey, WpfBrushes.DarkGreen)));
             template.Triggers.Add(mouseOverTrigger);
 
-            // IsPressed
             var pressedTrigger = new Trigger { Property = WpfButton.IsPressedProperty, Value = true };
             pressedTrigger.Setters.Add(new Setter(WpfButton.OpacityProperty, 0.9));
             var pressStoryboard = new Storyboard();
@@ -272,7 +252,6 @@ namespace WinRemoteSharp
             pressedTrigger.EnterActions.Add(new BeginStoryboard { Storyboard = pressStoryboard });
             template.Triggers.Add(pressedTrigger);
 
-            // IsEnabled
             var disabledTrigger = new Trigger { Property = WpfButton.IsEnabledProperty, Value = false };
             disabledTrigger.Setters.Add(new Setter(WpfButton.OpacityProperty, 0.4));
             template.Triggers.Add(disabledTrigger);
@@ -286,7 +265,6 @@ namespace WinRemoteSharp
 
         private void PlayEntryAnimation()
         {
-            // 初始状态：透明 + 向下偏移 + 缩小
             Opacity = 0;
             _mainBorder.RenderTransformOrigin = new WpfPoint(0.5, 0.5);
             _mainBorder.RenderTransform = new TransformGroup
@@ -300,7 +278,6 @@ namespace WinRemoteSharp
 
             var storyboard = new Storyboard();
             
-            // 淡入
             var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(200)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -309,7 +286,6 @@ namespace WinRemoteSharp
             Storyboard.SetTargetProperty(fadeIn, new PropertyPath(Window.OpacityProperty));
             storyboard.Children.Add(fadeIn);
 
-            // 缩放
             var scaleX = new DoubleAnimation(0.9, 1.0, new Duration(TimeSpan.FromMilliseconds(250)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -326,7 +302,6 @@ namespace WinRemoteSharp
             Storyboard.SetTargetProperty(scaleY, new PropertyPath("RenderTransform.Children[0].(ScaleTransform.ScaleY)"));
             storyboard.Children.Add(scaleY);
 
-            // 上移
             var translateY = new DoubleAnimation(20, 0, new Duration(TimeSpan.FromMilliseconds(250)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -342,7 +317,6 @@ namespace WinRemoteSharp
         {
             var storyboard = new Storyboard();
             
-            // 淡出
             var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromMilliseconds(150)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
@@ -351,7 +325,6 @@ namespace WinRemoteSharp
             Storyboard.SetTargetProperty(fadeOut, new PropertyPath(Window.OpacityProperty));
             storyboard.Children.Add(fadeOut);
 
-            // 缩小
             var scaleX = new DoubleAnimation(1.0, 0.95, new Duration(TimeSpan.FromMilliseconds(150)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
@@ -368,7 +341,6 @@ namespace WinRemoteSharp
             Storyboard.SetTargetProperty(scaleY, new PropertyPath("RenderTransform.Children[0].(ScaleTransform.ScaleY)"));
             storyboard.Children.Add(scaleY);
 
-            // 下移
             var translateY = new DoubleAnimation(0, 15, new Duration(TimeSpan.FromMilliseconds(150)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
@@ -409,7 +381,6 @@ namespace WinRemoteSharp
             if (owner != null)
             {
                 dlg.Owner = owner;
-                // 确保在所有者窗口上方
                 dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             }
             bool? result = dlg.ShowDialog();
