@@ -4,7 +4,6 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
 
-        <!-- ========== 颜色画刷 ========== -->
         <SolidColorBrush x:Key="MintMainBrush" Color="#FF20B2AA"/>
         <SolidColorBrush x:Key="MintDeepBrush" Color="#FF178F87"/>
         <SolidColorBrush x:Key="MintWhiteBrush" Color="#FFF5FFFE"/>
@@ -25,7 +24,6 @@
         <SolidColorBrush x:Key="CardBorderBrush" Color="#FFD5DCE6"/>
         <SolidColorBrush x:Key="BorderLightBrush" Color="#FFE8ECF0"/>
 
-        <!-- ========== 动画 Storyboard ========== -->
         <Storyboard x:Key="StatusDotPulse" RepeatBehavior="Forever" AutoReverse="True">
             <DoubleAnimation Storyboard.TargetProperty="Opacity"
                              From="1.0" To="0.3" Duration="0:0:0.8"/>
@@ -41,19 +39,12 @@
             </DoubleAnimation>
         </Storyboard>
 
-        <!-- ========== Window 样式 ========== -->
-        <!-- NOTE: 不使用 Opacity=0 + WindowEntrance 动画，因为会导致：
-             1) NotifyIcon 托盘图标不可见（WPF/WinForms 互操作问题）
-             2) 输入框光标丢失
-             3) 弹窗失效
-             4) 设置页面不加载 -->
         <Style TargetType="Window">
             <Setter Property="FontFamily" Value="Microsoft YaHei, SimSun, sans-serif"/>
             <Setter Property="Background" Value="{StaticResource MintWhiteBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         </Style>
 
-        <!-- ========== TextBox 样式 ========== -->
         <Style TargetType="TextBox">
             <Setter Property="CaretBrush" Value="{StaticResource MintMainBrush}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource MintMainBrush}"/>
@@ -74,7 +65,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- ========== PasswordBox 样式 ========== -->
         <Style TargetType="PasswordBox">
             <Setter Property="CaretBrush" Value="{StaticResource MintDeepBrush}"/>
             <Setter Property="SelectionBrush" Value="{StaticResource MintMainBrush}"/>
@@ -95,7 +85,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- ========== Button 样式 ========== -->
         <Style TargetType="Button">
             <Setter Property="Background" Value="{StaticResource MintMainBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextLightBrush}"/>
@@ -131,7 +120,6 @@
             </Setter>
         </Style>
 
-        <!-- ========== DangerButton ========== -->
         <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="{StaticResource ErrorBrush}"/>
             <Style.Triggers>
@@ -141,7 +129,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- ========== SecondaryButton ========== -->
         <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="{StaticResource TextSecondaryBrush}"/>
             <Style.Triggers>
@@ -151,7 +138,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- ========== GroupBox 样式 ========== -->
         <Style TargetType="GroupBox">
             <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -168,7 +154,6 @@
             </Setter>
         </Style>
 
-        <!-- ========== TabControl / TabItem 样式 ========== -->
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
@@ -203,7 +188,6 @@
             </Setter>
         </Style>
 
-        <!-- ========== ComboBox 样式 ========== -->
         <Style TargetType="ComboBox">
             <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
             <Setter Property="Background" Value="{StaticResource BgLightBrush}"/>
@@ -212,7 +196,6 @@
             <Setter Property="Padding" Value="6,4"/>
         </Style>
 
-        <!-- ========== CheckBox 样式 ========== -->
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="FontSize" Value="13"/>
@@ -220,7 +203,6 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
-        <!-- ========== ScrollViewer 样式 ========== -->
         <Style TargetType="ScrollViewer">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
