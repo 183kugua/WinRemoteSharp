@@ -30,7 +30,7 @@ namespace WinRemoteSharp
         {
             try
             {
-                var si = Application.GetResourceStream(new Uri("pack://application:,,,/Resources/DialogIcon.png"));
+                var si = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Resources/DialogIcon.png"));
                 if (si?.Stream != null)
                 {
                     _trayIconBitmap = new Bitmap(si.Stream);
@@ -166,7 +166,7 @@ namespace WinRemoteSharp
             _mainWindow.Dispatcher.Invoke(() =>
             {
                 _mainWindow._closingToTray = false;
-                Application.Current.Shutdown();
+                System.Windows.Application.Current.Shutdown();
             });
         }
 
