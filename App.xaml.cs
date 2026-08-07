@@ -37,8 +37,6 @@ namespace WinRemoteSharp
 
             if (this.MainWindow is MainWindow mw)
             {
-                // 默认启动时显示窗口 + 托盘图标
-                // 加 --hide 参数则隐藏到托盘
                 if (hideWindow)
                 {
                     mw.Hide();
@@ -48,8 +46,6 @@ namespace WinRemoteSharp
                     mw.Show();
                 }
 
-                // CRITICAL: 托盘创建必须延后到窗口 Loaded 之后，
-                // 否则 WPF 消息泵未就绪会导致 NotifyIcon 不可见。
                 mw.Loaded += (s, args) =>
                 {
                     mw.Dispatcher.BeginInvoke(new Action(() =>
