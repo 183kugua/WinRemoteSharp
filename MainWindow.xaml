@@ -17,7 +17,7 @@
         <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" Padding="16,10">
             <Grid>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🖥" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="&#x1F6E1;" FontSize="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock Text="WinRemote Agent"
                                FontSize="18" FontWeight="Bold"
                                Foreground="{StaticResource TextLightBrush}"
@@ -104,7 +104,7 @@
                                     <RowDefinition Height="140"/>
                                 </Grid.RowDefinitions>
                                 <TextBox x:Name="TxtTestCommand" Margin="0,0,0,6"/>
-                                <Button Grid.Row="1" Content="发送" Click="BtnSendTest_Click" Width="80" HorizontalAlignment="Left" Margin="0,0,0,6"/>
+                                <Button Grid.Row="1" Content="发送" Click="BtnRunTestCommand_Click" Width="80" HorizontalAlignment="Left" Margin="0,0,0,6"/>
                                 <TextBox x:Name="TxtTestResult" Grid.Row="2"
                                          IsReadOnly="True" TextWrapping="Wrap"
                                          AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
@@ -235,17 +235,21 @@
                         </GroupBox>
 
                         <GroupBox Header="服务日志">
-                            <TextBox x:Name="TxtServiceLog" Height="120"
-                                     IsReadOnly="True" TextWrapping="Wrap"
-                                     AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
-                                     Background="{StaticResource BgCardBrush}"
-                                     FontFamily="Consolas" FontSize="12"/>
-                            <WrapPanel Margin="0,6,0,0">
-                                <Button Content="刷新日志" Style="{StaticResource SecondaryButton}"
-                                        Click="BtnViewLogs_Click" Width="80" Margin="0,0,8,0"/>
-                                <Button Content="清除" Style="{StaticResource SecondaryButton}"
-                                        Click="BtnClearServiceLog_Click" Width="60"/>
-                            </WrapPanel>
+                            <StackPanel>
+                                <TextBox x:Name="TxtServiceLog" Height="120"
+                                         IsReadOnly="True" TextWrapping="Wrap"
+                                         AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                                         Background="{StaticResource BgCardBrush}"
+                                         FontFamily="Consolas" FontSize="12"/>
+                                <WrapPanel Margin="0,6,0,0">
+                                    <Button Content="刷新日志" Style="{StaticResource SecondaryButton}"
+                                            Click="BtnViewLogs_Click" Width="80" Margin="0,0,8,0"
+                                            FontSize="11" Padding="6,4"/>
+                                    <Button Content="清除" Style="{StaticResource SecondaryButton}"
+                                            Click="BtnClearServiceLog_Click" Width="50"
+                                            FontSize="11" Padding="6,4"/>
+                                </WrapPanel>
+                            </StackPanel>
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
@@ -286,7 +290,7 @@
                         <GroupBox Header="系统信息">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="120"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
