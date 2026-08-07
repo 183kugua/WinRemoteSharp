@@ -75,7 +75,7 @@ namespace WinRemoteSharp.Core
                     attempt++;
                     OnLog?.Invoke($"[Agent] 正在连接 (第 {attempt} 次) → {_config.ServerUrl}");
                     await ConnectAsync();
-                    attempt = 0;
+                    attempt = 0; // 重置计数
                     await RunReceiveLoop();
                 }
                 catch (Exception ex)
@@ -85,6 +85,7 @@ namespace WinRemoteSharp.Core
 
                 if (!_running || _disposed) break;
 
+                // 指数退避
                 int delay = Math.Min(
                     _config.ReconnectBaseDelaySec * (int)Math.Pow(2, Math.Min(attempt - 1, 5)),
                     _config.ReconnectMaxDelaySec);
@@ -113,6 +114,9 @@ namespace WinRemoteSharp.Core
             _ = Task.Run(HeartbeatLoopAsync);
         }
 
+        /// <summary>
+        /// 发送握手。服务端要求 type=="handshake"（注意：Python 旧版用 type:"auth" 已不被当前服务端接受）。
+        /// </summary>
         private async Task SendAuthAsync()
         {
             var auth = new
@@ -190,6 +194,7 @@ namespace WinRemoteSharp.Core
                         OnLog?.Invoke($"[Agent] 服务器返回错误: {GetString(root, "message", "")}");
                         break;
                     case "heartbeat_ack":
+                        // 服务端对心跳的应答，无需处理
                         break;
                     default:
                         OnLog?.Invoke($"[Agent] 未处理的消息类型: {type}");
@@ -202,6 +207,9 @@ namespace WinRemoteSharp.Core
             }
         }
 
+        /// <summary>
+        /// 所有指令都以 type:"command" 下发，具体动作由 action 区分，参数在 params 内。
+        /// </summary>
         private async Task HandleCommandAsync(JsonElement root)
         {
             string id = GetString(root, "id", "");
@@ -293,15 +301,19 @@ namespace WinRemoteSharp.Core
                     {
                         var jpegEncoder = ImageCodecInfo.GetImageEncoders()
                             .First(c => c.MimeType == "image/jpeg");
-                        var ep = new EncoderParameters(1);
-                        ep.Param[0] = new EncoderParameter(Encoder.Quality, Math.Max(1, Math.Min(100, quality)));
+                        var ep = new System.Drawing.Imaging.EncoderParameters(1);
+                        ep.Param[0] = new System.Drawing.Imaging.EncoderParameter(
+                            System.Drawing.Imaging.Encoder.Quality,
+                            (long)Math.Max(1, Math.Min(100, quality)));
                         bmp.Save(ms, jpegEncoder, ep);
                     }
                     data = ms.ToArray();
                 }
 
                 string b64 = Convert.ToBase64String(data);
+                // 先回结果（服务端 result 处理器据此清除 busy）
                 await SendResultAsync(id, "screenshot", new { ok = true, format = mime, size = data.Length });
+                // 再发送图片块（与服务端/Python Agent 协议一致）
                 await SendJsonAsync(new { type = "chunk", id, format = mime, data = b64 });
                 OnLog?.Invoke($"[截图] 已发送 ({b64.Length} chars base64)");
             }
@@ -466,6 +478,7 @@ namespace WinRemoteSharp.Core
                 StandardErrorEncoding = Encoding.UTF8
             };
 
+            // chcp 65001 保证中文 UTF-8 输出（与 Python Agent 行为一致）
             if (shell == "powershell")
                 psi.Arguments = $"/c chcp 65001 >nul && powershell -NoProfile -ExecutionPolicy Bypass -Command \"{command}\"";
             else
@@ -547,6 +560,10 @@ namespace WinRemoteSharp.Core
             return 0;
         }
 
+        /// <summary>
+        /// 将 "ctrl+c" / "alt+tab" / "ctrl+alt+del" / "win+r" 翻译为对应虚拟键并按下/抬起。
+        /// 使用 keybd_event 而非 SendKeys，以支持 Win 键与组合键。
+        /// </summary>
         private static void SendKeyCombo(string combo)
         {
             if (string.IsNullOrWhiteSpace(combo)) return;
@@ -616,6 +633,9 @@ namespace WinRemoteSharp.Core
             }
         }
 
+        /// <summary>
+        /// 统一结果上报：type:"result" + id + action + result{...}（服务端仅认此格式）
+        /// </summary>
         private async Task SendResultAsync(string id, string action, object resultObj)
         {
             await SendJsonAsync(new { type = "result", id, action, result = resultObj });
@@ -649,6 +669,9 @@ namespace WinRemoteSharp.Core
             }
         }
 
+        /// <summary>
+        /// 路径白名单：空白名单 = 放行（与 Python Agent / 服务端默认行为一致）。
+        /// </summary>
         private bool IsPathAllowed(string path)
         {
             if (_config.FileReadWhitelist == null || _config.FileReadWhitelist.Length == 0) return true;
@@ -709,12 +732,18 @@ namespace WinRemoteSharp.Core
             _disposed = true;
             _running = false;
 
-            try { _cts?.Cancel(); } catch { }
+            try
+            {
+                _cts?.Cancel();
+            }
+            catch { }
 
             try
             {
                 if (_ws?.State == WebSocketState.Open)
+                {
                     _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "dispose", CancellationToken.None).Wait(1000);
+                }
             }
             catch { }
 
