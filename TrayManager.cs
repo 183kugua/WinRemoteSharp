@@ -12,7 +12,6 @@ namespace WinRemoteSharp
 {
     /// <summary>
     /// 系统托盘管理器 — 使用独立 WinForms 线程 + Application.Run() 作为托盘消息宿主。
-    /// 这是解决 WPF 中 NotifyIcon 不显示问题的终极方案：
     /// NotifyIcon 运行在纯 WinForms 消息泵线程中，与 WPF 渲染管线完全隔离。
     /// </summary>
     public class TrayManager : IDisposable
@@ -28,7 +27,6 @@ namespace WinRemoteSharp
         {
             _mainWindow = mainWindow;
 
-            // 在独立 STA 线程中运行 WinForms 消息泵
             _trayThread = new Thread(RunTrayMessageLoop)
             {
                 Name = "TrayIconThread",
@@ -37,7 +35,6 @@ namespace WinRemoteSharp
             _trayThread.SetApartmentState(ApartmentState.STA);
             _trayThread.Start();
 
-            // 等待托盘就绪（最多 5 秒）
             if (!_trayReady.Wait(TimeSpan.FromSeconds(5)))
             {
                 Debug.WriteLine("[TrayManager] Timeout waiting for tray thread to start");
@@ -48,22 +45,17 @@ namespace WinRemoteSharp
         {
             try
             {
-                // 必须先创建至少一个 WinForms 控件/组件，触发 WinForms 初始化
                 System.Windows.Forms.Application.EnableVisualStyles();
                 System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
 
                 CreateTrayOnTrayThread();
-
-                // 标记就绪
                 _trayReady.Set();
-
-                // 启动 WinForms 消息泵（阻塞直到 Application.Exit() 被调用）
                 System.Windows.Forms.Application.Run();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[TrayManager] Tray thread crashed: {ex}");
-                _trayReady.Set(); // 确保不阻塞主线程
+                _trayReady.Set();
             }
         }
 
@@ -92,7 +84,7 @@ namespace WinRemoteSharp
 
         private System.Drawing.Icon LoadOrCreateIcon()
         {
-            // 方案 1: EmbeddedResource — 最可靠的方式
+            // 方案 1: EmbeddedResource
             try
             {
                 var assembly = Assembly.GetExecutingAssembly();
@@ -120,7 +112,7 @@ namespace WinRemoteSharp
             }
             catch (Exception ex) { Debug.WriteLine($"[TrayManager] File load failed: {ex}"); }
 
-            // 方案 3: 代码生成绿色盾牌图标（最终回退）
+            // 方案 3: 代码生成绿色盾牌图标
             return GenerateFallbackIcon();
         }
 
@@ -132,7 +124,6 @@ namespace WinRemoteSharp
                 using (var g = System.Drawing.Graphics.FromImage(_trayIconBitmap))
                 {
                     g.Clear(System.Drawing.Color.Transparent);
-                    // 绘制盾牌形状
                     using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(46, 139, 87)))
                     using (var pen = new System.Drawing.Pen(System.Drawing.Color.FromArgb(34, 139, 34), 2))
                     {
@@ -189,19 +180,10 @@ namespace WinRemoteSharp
             return menu;
         }
 
-        /// <summary>
-        /// 在托盘线程上安全地调用主窗口的 Dispatcher 操作
-        /// </summary>
         private void InvokeOnMain(Action action)
         {
-            try
-            {
-                _mainWindow.Dispatcher.Invoke(action);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[TrayManager] InvokeOnMain failed: {ex}");
-            }
+            try { _mainWindow.Dispatcher.Invoke(action); }
+            catch (Exception ex) { Debug.WriteLine($"[TrayManager] InvokeOnMain failed: {ex}"); }
         }
 
         private void ToggleWindow()
@@ -222,22 +204,13 @@ namespace WinRemoteSharp
                     }
                 });
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[TrayManager] ToggleWindow failed: {ex}");
-            }
+            catch (Exception ex) { Debug.WriteLine($"[TrayManager] ToggleWindow failed: {ex}"); }
         }
 
         public void ShowBalloonTip(string title, string message)
         {
-            try
-            {
-                _notifyIcon?.ShowBalloonTip(3000, title, message, System.Windows.Forms.ToolTipIcon.Info);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[TrayManager] ShowBalloonTip failed: {ex}");
-            }
+            try { _notifyIcon?.ShowBalloonTip(3000, title, message, System.Windows.Forms.ToolTipIcon.Info); }
+            catch (Exception ex) { Debug.WriteLine($"[TrayManager] ShowBalloonTip failed: {ex}"); }
         }
 
         public void UpdateConnectionStatus(bool connected)
@@ -247,10 +220,7 @@ namespace WinRemoteSharp
                 if (_notifyIcon != null)
                     _notifyIcon.Text = connected ? "WinRemote Agent - 已连接" : "WinRemote Agent - 未连接";
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[TrayManager] UpdateConnectionStatus failed: {ex}");
-            }
+            catch (Exception ex) { Debug.WriteLine($"[TrayManager] UpdateConnectionStatus failed: {ex}"); }
         }
 
         private bool IsAutoStartEnabled()
@@ -286,7 +256,7 @@ namespace WinRemoteSharp
             }
             catch (Exception ex)
             {
-                item.Checked = !item.Checked; // 回滚
+                item.Checked = !item.Checked;
                 InvokeOnMain(() => _mainWindow.AddLog($"设置开机自启失败: {ex.Message}"));
             }
         }
@@ -304,7 +274,6 @@ namespace WinRemoteSharp
             catch (Exception ex)
             {
                 Debug.WriteLine($"[TrayManager] ExitApplication failed: {ex}");
-                // 强制退出
                 Environment.Exit(0);
             }
         }
@@ -314,39 +283,21 @@ namespace WinRemoteSharp
             if (_disposed) return;
             _disposed = true;
 
-            // 清理 NotifyIcon（必须在托盘线程上执行）
             if (_notifyIcon != null)
             {
-                try
-                {
-                    _notifyIcon.Visible = false;
-                    _notifyIcon.Dispose();
-                    _notifyIcon = null;
-                }
+                try { _notifyIcon.Visible = false; _notifyIcon.Dispose(); _notifyIcon = null; }
                 catch { }
             }
 
-            // 停止 WinForms 消息泵
-            try
-            {
-                System.Windows.Forms.Application.Exit();
-            }
+            try { System.Windows.Forms.Application.Exit(); }
             catch { }
 
-            // 等待托盘线程退出（最多 3 秒）
             if (_trayThread.IsAlive)
-            {
                 _trayThread.Join(TimeSpan.FromSeconds(3));
-            }
 
-            // 清理 Bitmap
             if (_trayIconBitmap != null)
             {
-                try
-                {
-                    _trayIconBitmap.Dispose();
-                    _trayIconBitmap = null;
-                }
+                try { _trayIconBitmap.Dispose(); _trayIconBitmap = null; }
                 catch { }
             }
 
