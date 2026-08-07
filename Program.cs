@@ -4,16 +4,12 @@ using WinRemoteSharp.Core;
 
 namespace WinRemoteSharp
 {
-    // NOTE: No Main() here! App.xaml is the WPF entry point (StartupUri="MainWindow.xaml").
-    // This class is ONLY used when launched with --headless or --agent mode.
-    // WPF will NOT generate a Main() conflict because we don't define one here.
-
     public static class HeadlessRunner
     {
         public static async Task<int> RunAsync(string[] args)
         {
-            string serverUrl = "ws://127.0.0.1:6190/winremote";
-            string token = "";
+            string urlArg = "";
+            string tokenArg = "";
             string configPath = "config.json";
             bool installService = false;
             bool uninstallService = false;
@@ -24,8 +20,8 @@ namespace WinRemoteSharp
             for (int i = 0; i < args.Length; i++)
             {
                 string a = args[i].ToLowerInvariant();
-                if (a == "--url" && i + 1 < args.Length) serverUrl = args[++i];
-                else if (a == "--token" && i + 1 < args.Length) token = args[++i];
+                if (a == "--url" && i + 1 < args.Length) urlArg = args[++i];
+                else if (a == "--token" && i + 1 < args.Length) tokenArg = args[++i];
                 else if (a == "--config" && i + 1 < args.Length) configPath = args[++i];
                 else if (a == "--install-service") installService = true;
                 else if (a == "--uninstall-service") uninstallService = true;
@@ -36,26 +32,10 @@ namespace WinRemoteSharp
 
             var sm = new Core.ServiceManager();
 
-            if (installService)
-            {
-                Console.WriteLine(sm.Install());
-                return 0;
-            }
-            if (uninstallService)
-            {
-                Console.WriteLine(sm.Uninstall());
-                return 0;
-            }
-            if (startService)
-            {
-                Console.WriteLine(sm.Start());
-                return 0;
-            }
-            if (stopService)
-            {
-                Console.WriteLine(sm.Stop());
-                return 0;
-            }
+            if (installService) { Console.WriteLine(sm.Install()); return 0; }
+            if (uninstallService) { Console.WriteLine(sm.Uninstall()); return 0; }
+            if (startService) { Console.WriteLine(sm.Start()); return 0; }
+            if (stopService) { Console.WriteLine(sm.Stop()); return 0; }
             if (showStatus)
             {
                 var (running, state) = sm.GetServiceState();
@@ -63,16 +43,27 @@ namespace WinRemoteSharp
                 return 0;
             }
 
-            // Default: run agent headless
+            var cfg = Core.ConfigManager.Load(configPath);
+
+            string serverUrl = !string.IsNullOrEmpty(urlArg)
+                ? urlArg
+                : (!string.IsNullOrEmpty(cfg.ServerUrl) ? cfg.ServerUrl : "ws://127.0.0.1:6190/winremote");
+            string token = !string.IsNullOrEmpty(tokenArg) ? tokenArg : cfg.Token;
+            string agentId = !string.IsNullOrEmpty(cfg.AgentId) ? cfg.AgentId : Environment.MachineName;
+
             var agentConfig = new AgentConfig
             {
                 ServerUrl = serverUrl,
                 Token = token,
-                AgentId = Environment.MachineName,
-                HeartbeatIntervalSec = 30,
-                CommandTimeoutSec = 30,
+                AgentId = agentId,
+                HeartbeatIntervalSec = cfg.HeartbeatInterval > 0 ? cfg.HeartbeatInterval : 30,
+                CommandTimeoutSec = cfg.ConnectionTimeout > 0 ? cfg.ConnectionTimeout : 30,
                 EnableKeyboard = true,
-                EnableMouse = true
+                EnableMouse = true,
+                EnableFileWrite = cfg.AllowWrite,
+                FileReadWhitelist = cfg.FileReadWhitelist ?? Array.Empty<string>(),
+                ReconnectBaseDelaySec = 2,
+                ReconnectMaxDelaySec = 60
             };
 
             var client = new Core.AgentClient(agentConfig);
@@ -80,8 +71,9 @@ namespace WinRemoteSharp
             client.OnConnectionChanged += (connected) =>
                 Console.WriteLine($"[Agent] Connection: {(connected ? "connected" : "disconnected")}");
 
+            Console.WriteLine($"[Agent] id={agentId} server={serverUrl}");
             await client.ConnectWithRetryAsync();
-            await Task.Delay(-1); // run forever
+            await Task.Delay(-1);
             return 0;
         }
     }
