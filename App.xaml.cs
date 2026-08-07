@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace WinRemoteSharp
@@ -11,20 +10,16 @@ namespace WinRemoteSharp
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            AppDomain.CurrentDomain.UnhandledException += (s, args) => LogException(args.ExceptionObject as Exception, "AppDomain");
-            DispatcherUnhandledException += (s, args) => { LogException(args.Exception, "Dispatcher"); args.Handled = true; };
-            TaskScheduler.UnobservedTaskException += (s, args) => { LogException(args.Exception, "TaskScheduler"); args.SetObserved(); };
+            AppDomain.CurrentDomain.UnhandledException += (s, args) => Log(args.ExceptionObject as Exception);
+            DispatcherUnhandledException += (s, args) => { Log(args.Exception); args.Handled = true; };
 
             bool startMinimized = false;
             bool headless = false;
-
             foreach (string arg in e.Args)
             {
                 string a = arg.ToLowerInvariant();
-                if (a == "--minimized" || a == "-m")
-                    startMinimized = true;
-                else if (a == "--headless")
-                    headless = true;
+                if (a == "--minimized" || a == "-m") startMinimized = true;
+                else if (a == "--headless") headless = true;
             }
 
             if (headless)
@@ -37,38 +32,23 @@ namespace WinRemoteSharp
 
             base.OnStartup(e);
 
-            this.Activated += (s, ev) =>
+            if (this.MainWindow is MainWindow mw)
             {
-                if (_trayManager != null) return;
-                if (this.MainWindow is MainWindow mainWindow)
+                try
                 {
-                    try
-                    {
-                        _trayManager = new TrayManager(mainWindow);
-                        mainWindow.SetTrayManager(_trayManager);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogException(ex, "TrayManager");
-                    }
-                    if (startMinimized)
-                    {
-                        mainWindow.Hide();
-                    }
+                    _trayManager = new TrayManager(mw);
+                    mw.SetTrayManager(_trayManager);
                 }
-            };
+                catch (Exception ex) { Log(ex); }
+
+                if (startMinimized) mw.Hide();
+            }
         }
 
-        private void LogException(Exception ex, string source)
+        private void Log(Exception ex)
         {
             if (ex == null) return;
-            try
-            {
-                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup_crash.log");
-                string time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string line = "[" + time + "] [" + source + "]\n" + ex.ToString() + "\n\n";
-                File.AppendAllText(path, line);
-            }
+            try { File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log"), $"[{DateTime.Now:HH:mm:ss}] {ex}\n\n"); }
             catch { }
         }
 
