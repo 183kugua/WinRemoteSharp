@@ -49,8 +49,7 @@ namespace WinRemoteSharp
             try
             {
                 var iconUri = new Uri("pack://application:,,,/Resources/App.ico");
-                var bitmap = new BitmapImage(iconUri);
-                Icon = bitmap;
+                Icon = new BitmapImage(iconUri);
             }
             catch { }
 
@@ -78,7 +77,7 @@ namespace WinRemoteSharp
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var headerPanel = new StackPanel { Orientation = WpfOrientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-            
+
             var iconImage = new WpfImage
             {
                 Width = 28,
@@ -86,12 +85,7 @@ namespace WinRemoteSharp
                 Margin = new Thickness(0, 0, 10, 0),
                 VerticalAlignment = WpfVerticalAlignment.Center
             };
-            try
-            {
-                var iconUri = new Uri("pack://application:,,,/Resources/DialogIcon.png");
-                iconImage.Source = new BitmapImage(iconUri);
-            }
-            catch { }
+            try { iconImage.Source = new BitmapImage(new Uri("pack://application:,,,/Resources/DialogIcon.png")); } catch { }
             headerPanel.Children.Add(iconImage);
 
             var titleBlock = new TextBlock
@@ -187,8 +181,8 @@ namespace WinRemoteSharp
             Content = _mainBorder;
 
             Loaded += (s, e) => PlayEntryAnimation();
-            
-            MouseLeftButtonDown += (s, e) => 
+
+            MouseLeftButtonDown += (s, e) =>
             {
                 if (e.ButtonState == MouseButtonState.Pressed)
                     DragMove();
@@ -227,13 +221,13 @@ namespace WinRemoteSharp
             borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
             borderFactory.SetValue(Border.PaddingProperty, new TemplateBindingExtension(WpfButton.PaddingProperty));
             borderFactory.SetValue(Border.SnapsToDevicePixelsProperty, true);
-            
+
             var presenterFactory = new FrameworkElementFactory(typeof(ContentPresenter));
             presenterFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, WpfHorizontalAlignment.Center);
             presenterFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, WpfVerticalAlignment.Center);
             presenterFactory.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
             borderFactory.AppendChild(presenterFactory);
-            
+
             template.VisualTree = borderFactory;
 
             var mouseOverTrigger = new Trigger { Property = WpfButton.IsMouseOverProperty, Value = true };
@@ -277,7 +271,7 @@ namespace WinRemoteSharp
             };
 
             var storyboard = new Storyboard();
-            
+
             var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(200)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -316,7 +310,7 @@ namespace WinRemoteSharp
         private void CloseWithAnimation()
         {
             var storyboard = new Storyboard();
-            
+
             var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromMilliseconds(150)))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
@@ -366,11 +360,7 @@ namespace WinRemoteSharp
 
         private void Confirm()
         {
-            if (_isPassword)
-                InputText = _passwordBox?.Password ?? "";
-            else
-                InputText = _textBox?.Text ?? "";
-            
+            InputText = _isPassword ? (_passwordBox?.Password ?? "") : (_textBox?.Text ?? "");
             DialogResult = true;
             CloseWithAnimation();
         }
@@ -383,10 +373,7 @@ namespace WinRemoteSharp
                 dlg.Owner = owner;
                 dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             }
-            bool? result = dlg.ShowDialog();
-            if (result == true)
-                return dlg.InputText;
-            return null;
+            return dlg.ShowDialog() == true ? dlg.InputText : null;
         }
     }
 }
