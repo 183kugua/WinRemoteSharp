@@ -42,11 +42,6 @@
         </Storyboard>
 
         <!-- ========== Window 样式 ========== -->
-        <!-- NOTE: 不使用 Opacity=0 + WindowEntrance 动画，因为会导致：
-             1) NotifyIcon 托盘图标不可见（WPF/WinForms 互操作问题）
-             2) 输入框光标丢失
-             3) 弹窗失效
-             4) 设置页面不加载 -->
         <Style TargetType="Window">
             <Setter Property="FontFamily" Value="Microsoft YaHei, SimSun, sans-serif"/>
             <Setter Property="Background" Value="{StaticResource MintWhiteBrush}"/>
