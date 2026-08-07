@@ -191,7 +191,9 @@ namespace WinRemoteSharp
         {
             try
             {
-                string exePath = Process.GetCurrentProcess().MainModule.FileName;
+                string? exePath = Process.GetCurrentProcess().MainModule?.FileName;
+                if (string.IsNullOrEmpty(exePath)) return;
+                
                 using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true))
                 {
                     if (menuItem.Checked)
