@@ -18,10 +18,10 @@ namespace WinRemoteSharp
         private bool _closingToTray = true;
 
         // 画�刷�缓存（走资源，不�硬编码）
-        private Brush? _brushStatusOn;
-        private Brush? _brushStatusOff;
-        private Brush? _brushStatusErr;
-        private Brush? _brushStatusWarn;
+        private System.Windows.Media.Brush? _brushStatusOn;
+        private System.Windows.Media.Brush? _brushStatusOff;
+        private System.Windows.Media.Brush? _brushStatusErr;
+        private System.Windows.Media.Brush? _brushStatusWarn;
 
         public bool IsConnected => _agent?.IsConnected == true;
 
@@ -33,10 +33,10 @@ namespace WinRemoteSharp
             _svcMgr = new Core.ServiceManager();
 
             // �缓存画�刷
-            _brushStatusOn = FindResource("StatusOnBrush") as MediaBrush ?? Brushes.LimeGreen;
-            _brushStatusOff = FindResource("StatusOffBrush") as MediaBrush ?? Brushes.Gray;
-            _brushStatusErr = FindResource("StatusErrBrush") as MediaBrush ?? Brushes.Red;
-            _brushStatusWarn = FindResource("StatusWarnBrush") as MediaBrush ?? Brushes.Orange;
+            _brushStatusOn = FindResource("StatusOnBrush") as System.Windows.Media.Brush ?? Brushes.LimeGreen;
+            _brushStatusOff = FindResource("StatusOffBrush") as System.Windows.Media.Brush ?? Brushes.Gray;
+            _brushStatusErr = FindResource("StatusErrBrush") as System.Windows.Media.Brush ?? Brushes.Red;
+            _brushStatusWarn = FindResource("StatusWarnBrush") as System.Windows.Media.Brush ?? Brushes.Orange;
 
             // 初始化托�盘
             _trayMgr = new TrayManager(this);
