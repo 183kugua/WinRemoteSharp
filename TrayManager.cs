@@ -14,6 +14,7 @@ namespace WinRemoteSharp
         private readonly NotifyIcon _notifyIcon;
         private readonly ContextMenuStrip _contextMenu;
         private readonly MainWindow _mainWindow;
+        private System.Drawing.Bitmap _trayIconBitmap;
         private bool _disposed = false;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
@@ -48,11 +49,8 @@ namespace WinRemoteSharp
                 var streamInfo = System.Windows.Application.GetResourceStream(uri);
                 if (streamInfo?.Stream != null)
                 {
-                    using (var stream = streamInfo.Stream)
-                    using (var bitmap = new System.Drawing.Bitmap(stream))
-                    {
-                        return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
-                    }
+                    _trayIconBitmap = new System.Drawing.Bitmap(streamInfo.Stream);
+                    return System.Drawing.Icon.FromHandle(_trayIconBitmap.GetHicon());
                 }
             }
             catch { }
@@ -64,10 +62,8 @@ namespace WinRemoteSharp
                 {
                     if (stream != null)
                     {
-                        using (var bitmap = new System.Drawing.Bitmap(stream))
-                        {
-                            return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
-                        }
+                        _trayIconBitmap = new System.Drawing.Bitmap(stream);
+                        return System.Drawing.Icon.FromHandle(_trayIconBitmap.GetHicon());
                     }
                 }
             }
@@ -224,6 +220,7 @@ namespace WinRemoteSharp
             {
                 _notifyIcon?.Dispose();
                 _contextMenu?.Dispose();
+                _trayIconBitmap?.Dispose();
                 _disposed = true;
             }
         }
