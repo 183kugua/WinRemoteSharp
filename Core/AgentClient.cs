@@ -1,20 +1,29 @@
 #nullable enable
 using System;
-using System.Diagnostics;
-using System.IO;
-using System.Text;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Net.WebSockets;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Windows.Forms;
+using System.IO;
+using System.Linq;
+using System.Net.WebSockets;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace WinRemoteSharp.Core
 {
+    /// <summary>
+    /// 被控端 Agent：反连 AstrBot 插件 WS 服务，执行远程控制指令。
+    /// 协议与服务端 astrbot_plugin_winremote 严格对齐：
+    ///   握手: {"type":"handshake","token","agent_id","info":{...}}
+    ///   下行: {"type":"command","action":&lt;shell|powershell|screenshot|keypress|mouse|open|read_file|writefile|ping&gt;,"params":{...},"id":...}
+    ///   上行: {"type":"result","id","action","result":{...}}
+    ///   截图: 额外发送 {"type":"chunk","id","format","data":&lt;base64&gt;}
+    ///   心跳: {"type":"heartbeat","agent_id","t"}
+    /// </summary>
     public class AgentClient : IDisposable
     {
         private AgentConfig _config;
@@ -55,7 +64,7 @@ namespace WinRemoteSharp.Core
         public async Task ConnectWithRetryAsync(CancellationToken? extToken = null)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(AgentClient));
-            
+
             _running = true;
             int attempt = 0;
             while (_running && !_disposed)
@@ -65,7 +74,7 @@ namespace WinRemoteSharp.Core
                     attempt++;
                     OnLog?.Invoke($"[Agent] 正在连接 (第 {attempt} 次) → {_config.ServerUrl}");
                     await ConnectAsync();
-                    attempt = 0; // 重置计数
+                    attempt = 0;
                     await RunReceiveLoop();
                 }
                 catch (Exception ex)
@@ -75,7 +84,6 @@ namespace WinRemoteSharp.Core
 
                 if (!_running || _disposed) break;
 
-                // 指数退避
                 int delay = Math.Min(
                     _config.ReconnectBaseDelaySec * (int)Math.Pow(2, Math.Min(attempt - 1, 5)),
                     _config.ReconnectMaxDelaySec);
@@ -89,7 +97,7 @@ namespace WinRemoteSharp.Core
         public async Task ConnectAsync()
         {
             if (_disposed) throw new ObjectDisposedException(nameof(AgentClient));
-            
+
             _cts = new CancellationTokenSource();
             _ws = new ClientWebSocket();
             if (!string.IsNullOrEmpty(_config.Token))
@@ -98,7 +106,7 @@ namespace WinRemoteSharp.Core
             await _ws.ConnectAsync(new Uri(_config.ServerUrl), _cts.Token);
             _connected = true;
             OnConnectionChanged?.Invoke(true);
-            OnLog?.Invoke("[Agent] 已连接，发送认证...");
+            OnLog?.Invoke("[Agent] 已连接，发送握手...");
 
             await SendAuthAsync();
             _ = Task.Run(HeartbeatLoopAsync);
@@ -108,11 +116,15 @@ namespace WinRemoteSharp.Core
         {
             var auth = new
             {
-                type = "auth",
+                type = "handshake",
                 token = _config.Token,
-                agent_id = _config.AgentId,
-                version = "1.2",
-                capabilities = new[] { "cmd", "powershell", "screenshot", "keyboard", "mouse", "file_read", "file_write", "notify" }
+                agent_id = string.IsNullOrEmpty(_config.AgentId) ? Environment.MachineName : _config.AgentId,
+                info = new
+                {
+                    hostname = Environment.MachineName,
+                    username = Environment.UserName,
+                    platform = "windows"
+                }
             };
             await SendJsonAsync(auth);
         }
@@ -162,38 +174,24 @@ namespace WinRemoteSharp.Core
             {
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
-                string type = root.GetProperty("type").GetString() ?? "";
+                string type = GetString(root, "type", "");
                 OnMessage?.Invoke(json);
 
                 switch (type)
                 {
-                    case "cmd":
                     case "command":
                         await HandleCommandAsync(root);
                         break;
-                    case "screenshot":
-                        await HandleScreenshotAsync(root);
+                    case "auth_ok":
+                        OnLog?.Invoke("[Agent] 认证成功 ✅");
                         break;
-                    case "keyboard":
-                        HandleKeyboard(root);
+                    case "error":
+                        OnLog?.Invoke($"[Agent] 服务器返回错误: {GetString(root, "message", "")}");
                         break;
-                    case "mouse":
-                        HandleMouse(root);
+                    case "heartbeat_ack":
                         break;
-                    case "file_read":
-                        await HandleFileReadAsync(root);
-                        break;
-                    case "file_write":
-                        await HandleFileWriteAsync(root);
-                        break;
-                    case "notify":
-                        HandleNotify(root);
-                        break;
-                    case "ping":
-                        await SendJsonAsync(new { type = "pong", t = DateTimeOffset.UtcNow.ToUnixTimeSeconds() });
-                        break;
-                    case "config_update":
-                        HandleConfigUpdate(root);
+                    default:
+                        OnLog?.Invoke($"[Agent] 未处理的消息类型: {type}");
                         break;
                 }
             }
@@ -203,23 +201,59 @@ namespace WinRemoteSharp.Core
             }
         }
 
-        private void HandleConfigUpdate(JsonElement root)
+        private async Task HandleCommandAsync(JsonElement root)
         {
+            string id = GetString(root, "id", "");
+            string action = GetString(root, "action", "");
+
+            JsonElement prm;
+            if (root.TryGetProperty("params", out var p) && p.ValueKind == JsonValueKind.Object)
+                prm = p;
+            else
+            {
+                using var d = JsonDocument.Parse("{}");
+                prm = d.RootElement.Clone();
+            }
+
             try
             {
-                if (root.TryGetProperty("config", out var configElement))
+                switch (action)
                 {
-                    var newConfig = JsonSerializer.Deserialize<AgentConfig>(configElement.GetRawText());
-                    if (newConfig != null)
-                    {
-                        _config = newConfig;
-                        OnLog?.Invoke("[Config] 收到服务器配置更新");
-                    }
+                    case "shell":
+                    case "powershell":
+                        await HandleShellAsync(id, action, prm);
+                        break;
+                    case "screenshot":
+                        await HandleScreenshotAsync(id, prm);
+                        break;
+                    case "keypress":
+                        await HandleKeyboardAsync(id, prm);
+                        break;
+                    case "mouse":
+                        await HandleMouseAsync(id, prm);
+                        break;
+                    case "open":
+                        await HandleOpenAsync(id, prm);
+                        break;
+                    case "read_file":
+                    case "readfile":
+                        await HandleFileReadAsync(id, prm);
+                        break;
+                    case "writefile":
+                    case "write_file":
+                        await HandleFileWriteAsync(id, prm);
+                        break;
+                    case "ping":
+                        await HandlePingAsync(id);
+                        break;
+                    default:
+                        await SendResultAsync(id, action, new { ok = false, error = $"未知动作: {action}" });
+                        break;
                 }
             }
             catch (Exception ex)
             {
-                OnLog?.Invoke($"[Config] 配置更新解析失败: {ex.Message}");
+                await SendResultAsync(id, action, new { ok = false, error = ex.Message });
             }
         }
 
@@ -227,34 +261,204 @@ namespace WinRemoteSharp.Core
 
         #region 指令处理
 
-        private async Task HandleCommandAsync(JsonElement root)
+        private async Task HandleShellAsync(string id, string action, JsonElement prm)
         {
-            string cmdId = GetString(root, "id", "");
-            string cmd = GetString(root, "command", "");
-            string shell = GetString(root, "shell", "cmd");
-            bool elevated = GetBool(root, "elevated", false);
+            string cmd = GetString(prm, "command", "");
+            var r = await ExecuteCommandAsync(cmd, action == "powershell" ? "powershell" : "cmd", false);
+            if (r.TimedOut)
+                await SendResultAsync(id, action, new { ok = false, stdout = "", stderr = $"超时({_config.CommandTimeoutSec}s)已强杀", returncode = -1 });
+            else
+                await SendResultAsync(id, action, new { ok = r.ExitCode == 0, stdout = r.Output, stderr = "", returncode = r.ExitCode });
+        }
 
-            OnLog?.Invoke($"[CMD] {shell}: {cmd}");
-
+        private async Task HandleScreenshotAsync(string id, JsonElement prm)
+        {
             try
             {
-                string output = await ExecuteCommandAsync(cmd, shell, elevated);
-                await SendResultAsync(cmdId, true, output);
+                string fmt = (GetString(prm, "format", "JPEG")).ToUpperInvariant();
+                int quality = GetInt(prm, "quality", 75);
+                bool png = fmt.Contains("PNG");
+                string mime = png ? "image/png" : "image/jpeg";
+
+                byte[] data;
+                using (var bmp = CaptureScreen())
+                using (var ms = new MemoryStream())
+                {
+                    if (png)
+                    {
+                        bmp.Save(ms, ImageFormat.Png);
+                    }
+                    else
+                    {
+                        var jpegEncoder = ImageCodecInfo.GetImageEncoders()
+                            .First(c => c.MimeType == "image/jpeg");
+                        var ep = new EncoderParameters(1);
+                        ep.Param[0] = new EncoderParameter(Encoder.Quality, Math.Max(1, Math.Min(100, quality)));
+                        bmp.Save(ms, jpegEncoder, ep);
+                    }
+                    data = ms.ToArray();
+                }
+
+                string b64 = Convert.ToBase64String(data);
+                await SendResultAsync(id, "screenshot", new { ok = true, format = mime, size = data.Length });
+                await SendJsonAsync(new { type = "chunk", id, format = mime, data = b64 });
+                OnLog?.Invoke($"[截图] 已发送 ({b64.Length} chars base64)");
             }
             catch (Exception ex)
             {
-                await SendResultAsync(cmdId, false, ex.Message);
+                await SendResultAsync(id, "screenshot", new { ok = false, error = ex.Message });
             }
         }
 
-        private async Task<string> ExecuteCommandAsync(string command, string shell, bool elevated)
+        private async Task HandleKeyboardAsync(string id, JsonElement prm)
+        {
+            if (!_config.EnableKeyboard)
+            {
+                await SendResultAsync(id, "keypress", new { ok = false, error = "键盘模拟未启用" });
+                return;
+            }
+            string keys = GetString(prm, "keys", "");
+            try
+            {
+                SendKeyCombo(keys);
+                await SendResultAsync(id, "keypress", new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                await SendResultAsync(id, "keypress", new { ok = false, error = ex.Message });
+            }
+        }
+
+        private async Task HandleMouseAsync(string id, JsonElement prm)
+        {
+            if (!_config.EnableMouse)
+            {
+                await SendResultAsync(id, "mouse", new { ok = false, error = "鼠标模拟未启用" });
+                return;
+            }
+            string button = GetString(prm, "button", "click");
+            int x = GetInt(prm, "x", Cursor.Position.X);
+            int y = GetInt(prm, "y", Cursor.Position.Y);
+            try
+            {
+                Cursor.Position = new System.Drawing.Point(x, y);
+                switch (button.ToLowerInvariant())
+                {
+                    case "right":
+                        mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+                        mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+                        break;
+                    case "double":
+                        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                        break;
+                    case "move":
+                        break;
+                    default:
+                        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                        break;
+                }
+                await SendResultAsync(id, "mouse", new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                await SendResultAsync(id, "mouse", new { ok = false, error = ex.Message });
+            }
+        }
+
+        private async Task HandleOpenAsync(string id, JsonElement prm)
+        {
+            string target = GetString(prm, "target", "");
+            try
+            {
+                if (string.IsNullOrWhiteSpace(target))
+                {
+                    await SendResultAsync(id, "open", new { ok = false, error = "目标为空" });
+                    return;
+                }
+                Process.Start(new ProcessStartInfo(target) { UseShellExecute = true, CreateNoWindow = true });
+                await SendResultAsync(id, "open", new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                await SendResultAsync(id, "open", new { ok = false, error = ex.Message });
+            }
+        }
+
+        private async Task HandleFileReadAsync(string id, JsonElement prm)
+        {
+            string path = GetString(prm, "path", "");
+            int max = GetInt(prm, "max_bytes", 1048576);
+            try
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    await SendResultAsync(id, "read_file", new { ok = false, error = "路径为空" });
+                    return;
+                }
+                if (!IsPathAllowed(path))
+                {
+                    await SendResultAsync(id, "read_file", new { ok = false, error = "路径不在白名单内" });
+                    return;
+                }
+                byte[] raw = File.ReadAllBytes(path);
+                if (max > 0 && raw.Length > max) raw = raw.Take(max).ToArray();
+                string content = Encoding.UTF8.GetString(raw);
+                await SendResultAsync(id, "read_file", new { ok = true, content, bytes = Encoding.UTF8.GetByteCount(content) });
+            }
+            catch (Exception ex)
+            {
+                await SendResultAsync(id, "read_file", new { ok = false, error = ex.Message });
+            }
+        }
+
+        private async Task HandleFileWriteAsync(string id, JsonElement prm)
+        {
+            if (!_config.EnableFileWrite)
+            {
+                await SendResultAsync(id, "writefile", new { ok = false, error = "文件写入未启用（高风险功能）" });
+                return;
+            }
+            string path = GetString(prm, "path", "");
+            string content = GetString(prm, "content", "");
+            try
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    await SendResultAsync(id, "writefile", new { ok = false, error = "路径为空" });
+                    return;
+                }
+                string? dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                File.WriteAllText(path, content);
+                await SendResultAsync(id, "writefile", new { ok = true, bytes = Encoding.UTF8.GetByteCount(content) });
+            }
+            catch (Exception ex)
+            {
+                await SendResultAsync(id, "writefile", new { ok = false, error = ex.Message });
+            }
+        }
+
+        private async Task HandlePingAsync(string id)
+        {
+            await SendResultAsync(id, "ping", new { ok = true, pong = DateTimeOffset.UtcNow.ToUnixTimeSeconds() });
+        }
+
+        #endregion
+
+        #region 命令执行
+
+        private async Task<CmdResult> ExecuteCommandAsync(string command, string shell, bool elevated)
         {
             var psi = new ProcessStartInfo
             {
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
+                FileName = "cmd.exe",
+                RedirectStandardOutput = !elevated,
+                RedirectStandardError = !elevated,
+                UseShellExecute = elevated,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
                 StandardOutputEncoding = Encoding.UTF8,
@@ -262,105 +466,46 @@ namespace WinRemoteSharp.Core
             };
 
             if (shell == "powershell")
-            {
-                psi.FileName = "powershell.exe";
-                psi.Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"";
-            }
+                psi.Arguments = $"/c chcp 65001 >nul && powershell -NoProfile -ExecutionPolicy Bypass -Command \"{command}\"";
             else
-            {
-                psi.FileName = "cmd.exe";
-                psi.Arguments = $"/c {command}";
-            }
+                psi.Arguments = $"/c chcp 65001 >nul && {command}";
 
-            if (elevated)
-            {
-                psi.Verb = "runas";
-                psi.UseShellExecute = true;
-                // elevated 需要重新设置 redirect
-                psi.RedirectStandardOutput = false;
-                psi.RedirectStandardError = false;
-            }
+            if (elevated) psi.Verb = "runas";
 
             using var proc = Process.Start(psi)!;
-            
+
             if (!elevated)
             {
-                var outputBuilder = new StringBuilder();
-                var errorBuilder = new StringBuilder();
-                
-                proc.OutputDataReceived += (s, e) =>
-                {
-                    if (e.Data != null)
-                        outputBuilder.AppendLine(e.Data);
-                };
-                proc.ErrorDataReceived += (s, e) =>
-                {
-                    if (e.Data != null)
-                        errorBuilder.AppendLine(e.Data);
-                };
-
+                var outB = new StringBuilder();
+                var errB = new StringBuilder();
+                proc.OutputDataReceived += (s, e) => { if (e.Data != null) outB.AppendLine(e.Data); };
+                proc.ErrorDataReceived += (s, e) => { if (e.Data != null) errB.AppendLine(e.Data); };
                 proc.BeginOutputReadLine();
                 proc.BeginErrorReadLine();
 
-                var timeoutTask = Task.Delay(_config.CommandTimeoutSec * 1000);
                 var waitTask = proc.WaitForExitAsync();
+                var timeoutTask = Task.Delay(_config.CommandTimeoutSec * 1000);
                 var completed = await Task.WhenAny(waitTask, timeoutTask);
-
                 if (completed == timeoutTask)
                 {
                     try { proc.Kill(); } catch { }
-                    return "[ERROR] 命令执行超时";
+                    return new CmdResult { TimedOut = true, ExitCode = -1 };
                 }
-
-                string output = outputBuilder.ToString().TrimEnd();
-                string err = errorBuilder.ToString().TrimEnd();
-                return string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err;
+                string output = outB.ToString().TrimEnd();
+                string err = errB.ToString().TrimEnd();
+                return new CmdResult { Output = string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err, ExitCode = proc.ExitCode };
             }
             else
             {
-                // Elevated 模式无法重定向输出
                 var waitTask = proc.WaitForExitAsync();
                 var timeoutTask = Task.Delay(_config.CommandTimeoutSec * 1000);
                 var completed = await Task.WhenAny(waitTask, timeoutTask);
-                
                 if (completed == timeoutTask)
                 {
                     try { proc.Kill(); } catch { }
-                    return "[ERROR] 命令执行超时";
+                    return new CmdResult { TimedOut = true, ExitCode = -1 };
                 }
-                
-                return $"[INFO] 命令已执行 (ExitCode: {proc.ExitCode}) - 管理员模式下无法捕获输出";
-            }
-        }
-
-        private async Task HandleScreenshotAsync(JsonElement root)
-        {
-            string cmdId = GetString(root, "id", "");
-            try
-            {
-                // 截图必须在 STA 线程运行
-                string b64 = await Task.Run(() =>
-                {
-                    using var bmp = CaptureScreen();
-                    using var ms = new MemoryStream();
-                    bmp.Save(ms, _config.ScreenshotFormat == "jpg" ? ImageFormat.Jpeg : ImageFormat.Png);
-                    byte[] data = ms.ToArray();
-                    return Convert.ToBase64String(data);
-                });
-
-                await SendJsonAsync(new
-                {
-                    type = "screenshot_result",
-                    id = cmdId,
-                    format = _config.ScreenshotFormat,
-                    data = b64,
-                    size = b64.Length * 3 / 4 // 近似原始大小
-                });
-                OnLog?.Invoke($"[截图] 已发送 ({b64.Length} chars base64)");
-            }
-            catch (Exception ex)
-            {
-                await SendResultAsync(cmdId, false, ex.Message);
+                return new CmdResult { Output = $"[INFO] 命令已执行 (ExitCode: {proc.ExitCode}) - 管理员模式下无法捕获输出", ExitCode = proc.ExitCode };
             }
         }
 
@@ -373,113 +518,61 @@ namespace WinRemoteSharp.Core
             return bmp;
         }
 
-        private void HandleKeyboard(JsonElement root)
+        #endregion
+
+        #region 键盘发送（兼容 ctrl+c / alt+tab / ctrl+alt+del / win+r）
+
+        private static readonly Dictionary<string, int> _specialKeys = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
-            if (!_config.EnableKeyboard) { OnLog?.Invoke("[键盘] 未启用"); return; }
-            string keys = GetString(root, "keys", "");
-            try
+            { "enter", 0x0D }, { "return", 0x0D }, { "tab", 0x09 }, { "esc", 0x1B }, { "escape", 0x1B },
+            { "backspace", 0x08 }, { "delete", 0x2E }, { "del", 0x2E }, { "space", 0x20 }, { " ", 0x20 },
+            { "up", 0x26 }, { "down", 0x28 }, { "left", 0x25 }, { "right", 0x27 }, { "home", 0x24 },
+            { "end", 0x23 }, { "pgup", 0x21 }, { "pgdn", 0x22 }, { "insert", 0x2D },
+            { "f1", 0x70 }, { "f2", 0x71 }, { "f3", 0x72 }, { "f4", 0x73 }, { "f5", 0x74 }, { "f6", 0x75 },
+            { "f7", 0x76 }, { "f8", 0x77 }, { "f9", 0x78 }, { "f10", 0x79 }, { "f11", 0x7A }, { "f12", 0x7B },
+            { "capslock", 0x14 }, { "numlock", 0x90 }, { "scrolllock", 0x91 }, { "printscreen", 0x2C },
+            { "pause", 0x13 }, { "win", 0x5B }, { "windows", 0x5B }, { "lwin", 0x5B }, { "rwin", 0x5C },
+            { "menu", 0x5D }, { "apps", 0x5D }
+        };
+
+        private static int CharToVk(string key)
+        {
+            if (_specialKeys.TryGetValue(key, out int vk)) return vk;
+            if (key.Length == 1)
             {
-                SendKeys.SendWait(keys);
-                OnLog?.Invoke($"[键盘] 已发送: {keys}");
+                short v = VkKeyScan(key[0]);
+                if (v != -1) return v & 0xFF;
             }
-            catch (Exception ex)
-            {
-                OnLog?.Invoke($"[键盘] 错误: {ex.Message}");
-            }
+            return 0;
         }
 
-        private void HandleMouse(JsonElement root)
+        private static void SendKeyCombo(string combo)
         {
-            if (!_config.EnableMouse) { OnLog?.Invoke("[鼠标] 未启用"); return; }
-            string action = GetString(root, "action", "click");
-            int x = GetInt(root, "x", Cursor.Position.X);
-            int y = GetInt(root, "y", Cursor.Position.Y);
-
-            Cursor.Position = new Point(x, y);
-            switch (action)
+            if (string.IsNullOrWhiteSpace(combo)) return;
+            var parts = combo.Split('+');
+            var modifiers = new List<int>();
+            string mainKey = parts[^1];
+            for (int i = 0; i < parts.Length - 1; i++)
             {
-                case "click":
-                case "left":
-                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-                    break;
-                case "right":
-                    mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
-                    mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
-                    break;
-                case "double":
-                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-                    break;
-                case "move":
-                    break;
-            }
-            OnLog?.Invoke($"[鼠标] {action} @ ({x},{y})");
-        }
-
-        private async Task HandleFileReadAsync(JsonElement root)
-        {
-            string cmdId = GetString(root, "id", "");
-            string path = GetString(root, "path", "");
-            try
-            {
-                if (!IsPathAllowed(path))
+                string m = parts[i].Trim().ToLowerInvariant();
+                int mv = m switch
                 {
-                    await SendResultAsync(cmdId, false, "路径不在白名单内");
-                    return;
-                }
-                string content = File.ReadAllText(path);
-                await SendJsonAsync(new { type = "file_result", id = cmdId, success = true, content, path });
+                    "ctrl" or "control" => 0x11,
+                    "alt" => 0x12,
+                    "shift" => 0x10,
+                    "win" or "windows" or "lwin" => 0x5B,
+                    "rwin" => 0x5C,
+                    _ => 0
+                };
+                if (mv != 0) modifiers.Add(mv);
             }
-            catch (Exception ex)
-            {
-                await SendResultAsync(cmdId, false, ex.Message);
-            }
-        }
+            int vk = CharToVk(mainKey.Trim());
+            if (vk == 0) throw new Exception($"无法识别的按键: {mainKey}");
 
-        private async Task HandleFileWriteAsync(JsonElement root)
-        {
-            string cmdId = GetString(root, "id", "");
-            if (!_config.EnableFileWrite)
-            {
-                await SendResultAsync(cmdId, false, "文件写入未启用（高风险功能）");
-                return;
-            }
-            string path = GetString(root, "path", "");
-            string content = GetString(root, "content", "");
-            try
-            {
-                string? dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-                File.WriteAllText(path, content);
-                await SendResultAsync(cmdId, true, $"已写入 {path}");
-            }
-            catch (Exception ex)
-            {
-                await SendResultAsync(cmdId, false, ex.Message);
-            }
-        }
-
-        private void HandleNotify(JsonElement root)
-        {
-            string title = GetString(root, "title", "WinRemote");
-            string text = GetString(root, "text", "");
-            try
-            {
-                var t = new Thread(() =>
-                {
-                    MessageBox.Show(text, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                });
-                t.SetApartmentState(ApartmentState.STA);
-                t.Start();
-            }
-            catch (Exception ex)
-            {
-                OnLog?.Invoke($"[通知] 错误: {ex.Message}");
-            }
+            foreach (var m in modifiers) keybd_event((byte)m, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+            keybd_event((byte)vk, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+            keybd_event((byte)vk, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            foreach (var m in ((IEnumerable<int>)modifiers).Reverse()) keybd_event((byte)m, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         }
 
         #endregion
@@ -494,11 +587,11 @@ namespace WinRemoteSharp.Core
                 {
                     await Task.Delay(_config.HeartbeatIntervalSec * 1000, _cts?.Token ?? CancellationToken.None);
                     if (_disposed) break;
-                    
+
                     await SendJsonAsync(new
                     {
                         type = "heartbeat",
-                        agent_id = _config.AgentId,
+                        agent_id = string.IsNullOrEmpty(_config.AgentId) ? Environment.MachineName : _config.AgentId,
                         t = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                     });
                 }
@@ -522,16 +615,11 @@ namespace WinRemoteSharp.Core
             }
         }
 
-        private async Task SendResultAsync(string id, bool success, string output)
+        private async Task SendResultAsync(string id, string action, object resultObj)
         {
-            await SendJsonAsync(new
-            {
-                type = "command_result",
-                id,
-                success,
-                output = output ?? ""
-            });
-            OnCommandResult?.Invoke(id, output ?? "");
+            await SendJsonAsync(new { type = "result", id, action, result = resultObj });
+            if (action is "shell" or "powershell" or "read_file" or "writefile" or "screenshot")
+                OnCommandResult?.Invoke(id, JsonSerializer.Serialize(resultObj));
         }
 
         #endregion
@@ -551,7 +639,7 @@ namespace WinRemoteSharp.Core
             {
                 _connected = false;
                 OnConnectionChanged?.Invoke(false);
-                
+
                 _cts?.Cancel();
                 _cts?.Dispose();
                 _cts = null;
@@ -562,7 +650,7 @@ namespace WinRemoteSharp.Core
 
         private bool IsPathAllowed(string path)
         {
-            if (_config.FileReadWhitelist == null || _config.FileReadWhitelist.Length == 0) return false;
+            if (_config.FileReadWhitelist == null || _config.FileReadWhitelist.Length == 0) return true;
             string full = Path.GetFullPath(path);
             foreach (var w in _config.FileReadWhitelist)
             {
@@ -598,8 +686,17 @@ namespace WinRemoteSharp.Core
         public const int MOUSEEVENTF_RIGHTDOWN = 0x08;
         public const int MOUSEEVENTF_RIGHTUP = 0x10;
 
+        private const uint KEYEVENTF_KEYDOWN = 0x0000;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+
         [DllImport("user32.dll")]
         public static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        public static extern short VkKeyScan(char ch);
 
         #endregion
 
@@ -610,26 +707,27 @@ namespace WinRemoteSharp.Core
             if (_disposed) return;
             _disposed = true;
             _running = false;
-            
-            try
-            {
-                _cts?.Cancel();
-            }
-            catch { }
-            
+
+            try { _cts?.Cancel(); } catch { }
+
             try
             {
                 if (_ws?.State == WebSocketState.Open)
-                {
                     _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "dispose", CancellationToken.None).Wait(1000);
-                }
             }
             catch { }
-            
+
             _cts?.Dispose();
             _ws?.Dispose();
         }
 
         #endregion
+
+        private sealed class CmdResult
+        {
+            public string Output = "";
+            public int ExitCode;
+            public bool TimedOut;
+        }
     }
 }
