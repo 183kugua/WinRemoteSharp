@@ -31,11 +31,25 @@
                              From="1.0" To="0.3" Duration="0:0:0.8"/>
         </Storyboard>
 
+        <Storyboard x:Key="WindowEntrance">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                             From="0.0" To="1.0"
+                             Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
         <!-- ========== Window 样式 ========== -->
         <Style TargetType="Window">
+            <Setter Property="Opacity" Value="0"/>
             <Setter Property="FontFamily" Value="Microsoft YaHei, SimSun, sans-serif"/>
-            <Setter Property="Background" Value="{StaticResource MintWhiteBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                    <BeginStoryboard Storyboard="{StaticResource WindowEntrance}"/>
+                </EventTrigger>
+            </Style.Triggers>
         </Style>
 
         <!-- ========== TextBox 样式 ========== -->
