@@ -38,7 +38,6 @@ namespace WinRemoteSharp
             RefreshServiceStatus();
             AddLog("WinRemote Agent V1.2 已就绪");
 
-            // 自动连接服务器
             string url = TxtServerUrl.Text.Trim();
             if (!string.IsNullOrEmpty(url) && url.StartsWith("ws"))
             {
@@ -222,6 +221,13 @@ namespace WinRemoteSharp
                 AddLog("服务器可达");
             }
             catch (Exception ex) { AddLog($"失败: {ex.Message}"); }
+        }
+
+        private void BtnRunTestCommand_Click(object sender, RoutedEventArgs e)
+        {
+            var cmd = TxtTestCommand.Text.Trim();
+            if (string.IsNullOrEmpty(cmd)) return;
+            _ = RunCmdAsync(cmd, "cmd");
         }
 
         private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtLog.Clear();
