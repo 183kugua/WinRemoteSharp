@@ -25,18 +25,7 @@
         <SolidColorBrush x:Key="BorderLightBrush" Color="#FFE8ECF0"/>
 
         <Storyboard x:Key="StatusDotPulse" RepeatBehavior="Forever" AutoReverse="True">
-            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                             From="1.0" To="0.3" Duration="0:0:0.8"/>
-        </Storyboard>
-
-        <Storyboard x:Key="WindowEntrance">
-            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                             From="0.0" To="1.0"
-                             Duration="0:0:0.3">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.3" Duration="0:0:0.8"/>
         </Storyboard>
 
         <Style TargetType="Window">
@@ -96,12 +85,9 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                CornerRadius="6"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
                                               RecognizesAccessKey="True"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -168,11 +154,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border Background="Transparent"
-                                Padding="{TemplateBinding Padding}"
-                                Cursor="Hand">
-                            <ContentPresenter Content="{TemplateBinding Header}"
-                                              VerticalAlignment="Center"/>
+                        <Border Background="Transparent" Padding="{TemplateBinding Padding}" Cursor="Hand">
+                            <ContentPresenter Content="{TemplateBinding Header}" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
