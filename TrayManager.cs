@@ -9,9 +9,6 @@ using System.Windows.Forms;
 
 namespace WinRemoteSharp
 {
-    /// <summary>
-    /// 系统托盘管理器 - 支持最小化到托盘、右键菜单、开机自启
-    /// </summary>
     public class TrayManager : IDisposable
     {
         private readonly NotifyIcon _notifyIcon;
@@ -19,7 +16,6 @@ namespace WinRemoteSharp
         private readonly MainWindow _mainWindow;
         private bool _disposed = false;
 
-        // Win32 API for setting startup
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern int SHGetFolderPath(IntPtr hwndOwner, int nFolder, IntPtr hToken, uint dwFlags, System.Text.StringBuilder lpszPath);
 
@@ -29,7 +25,6 @@ namespace WinRemoteSharp
         {
             _mainWindow = mainWindow;
 
-            // 创建托盘图标
             _notifyIcon = new NotifyIcon
             {
                 Visible = true,
@@ -37,15 +32,11 @@ namespace WinRemoteSharp
                 Icon = CreateTrayIcon()
             };
 
-            // 创建右键菜单
             _contextMenu = new ContextMenuStrip();
             BuildContextMenu();
             _notifyIcon.ContextMenuStrip = _contextMenu;
 
-            // 双击显示/隐藏窗口
             _notifyIcon.DoubleClick += (s, e) => ToggleWindow();
-
-            // 窗口状态改变时同步托盘提示
             _mainWindow.StateChanged += (s, e) => UpdateTrayTooltip();
         }
 
@@ -53,13 +44,26 @@ namespace WinRemoteSharp
         {
             try
             {
-                // 尝试从资源加载图标 - 使用 DialogIcon.png
+                var uri = new Uri("pack://application:,,,/Resources/DialogIcon.png");
+                var streamInfo = System.Windows.Application.GetResourceStream(uri);
+                if (streamInfo?.Stream != null)
+                {
+                    using (var stream = streamInfo.Stream)
+                    using (var bitmap = new System.Drawing.Bitmap(stream))
+                    {
+                        return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
                 var assembly = Assembly.GetExecutingAssembly();
                 using (var stream = assembly.GetManifestResourceStream("WinRemoteSharp.Resources.DialogIcon.png"))
                 {
                     if (stream != null)
                     {
-                        // 将 PNG 转换为 Icon
                         using (var bitmap = new System.Drawing.Bitmap(stream))
                         {
                             return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
@@ -69,7 +73,6 @@ namespace WinRemoteSharp
             }
             catch { }
 
-            // 回退：使用系统默认图标
             return SystemIcons.Application;
         }
 
@@ -77,14 +80,12 @@ namespace WinRemoteSharp
         {
             _contextMenu.Items.Clear();
 
-            // 显示/隐藏主窗口
             var showHideItem = new ToolStripMenuItem("显示窗口");
             showHideItem.Click += (s, e) => ToggleWindow();
             _contextMenu.Items.Add(showHideItem);
 
             _contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 连接/断开
             var connectItem = new ToolStripMenuItem("连接服务器");
             connectItem.Click += (s, e) => _mainWindow.TrayConnect();
             _contextMenu.Items.Add(connectItem);
@@ -95,7 +96,6 @@ namespace WinRemoteSharp
 
             _contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 服务管理
             var serviceMenu = new ToolStripMenuItem("服务管理");
             serviceMenu.DropDownItems.Add("安装服务", null, (s, e) => _mainWindow.TrayInstallService());
             serviceMenu.DropDownItems.Add("卸载服务", null, (s, e) => _mainWindow.TrayUninstallService());
@@ -107,7 +107,6 @@ namespace WinRemoteSharp
 
             _contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 开机自启
             var autoStartItem = new ToolStripMenuItem("开机自启");
             autoStartItem.CheckOnClick = true;
             autoStartItem.Checked = IsAutoStartEnabled();
@@ -116,24 +115,20 @@ namespace WinRemoteSharp
 
             _contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 关于
             var aboutItem = new ToolStripMenuItem("关于");
             aboutItem.Click += (s, e) => _mainWindow.TrayCheckUpdate();
             _contextMenu.Items.Add(aboutItem);
 
-            // 刷新日志
             var refreshLogsItem = new ToolStripMenuItem("刷新日志");
             refreshLogsItem.Click += (s, e) => _mainWindow.TrayRefreshLogs();
             _contextMenu.Items.Add(refreshLogsItem);
 
-            // 打开日志目录
             var openLogDirItem = new ToolStripMenuItem("打开日志目录");
             openLogDirItem.Click += (s, e) => _mainWindow.TrayOpenLogDir();
             _contextMenu.Items.Add(openLogDirItem);
 
             _contextMenu.Items.Add(new ToolStripSeparator());
 
-            // 退出
             var exitItem = new ToolStripMenuItem("退出");
             exitItem.Click += (s, e) => ExitApplication();
             _contextMenu.Items.Add(exitItem);
@@ -209,7 +204,7 @@ namespace WinRemoteSharp
             }
             catch (Exception ex)
             {
-                menuItem.Checked = !menuItem.Checked; // 恢复原状
+                menuItem.Checked = !menuItem.Checked;
                 _mainWindow.Dispatcher.Invoke(() => _mainWindow.AddLog($"设置开机自启失败: {ex.Message}"));
             }
         }
@@ -218,7 +213,7 @@ namespace WinRemoteSharp
         {
             _mainWindow.Dispatcher.Invoke(() =>
             {
-                _mainWindow._closingToTray = false; // 标记为真正退出
+                _mainWindow._closingToTray = false;
                 System.Windows.Application.Current.Shutdown();
             });
         }
