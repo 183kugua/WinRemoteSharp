@@ -62,7 +62,7 @@ namespace WinRemoteSharp
             // 主容器 - 带阴影的圆角边框
             _mainBorder = new Border
             {
-                Background = GetSafeBrush("BgLightBrush", Brushes.White),
+                Background = GetSafeBrush("BgLightBrush", WpfBrushes.White),
                 CornerRadius = new CornerRadius(16),
                 BorderBrush = GetSafeBrush("CardBorderBrush", new SolidColorBrush(Colors.LightGray)),
                 BorderThickness = new Thickness(1.5),
@@ -107,7 +107,7 @@ namespace WinRemoteSharp
                 Text = title,
                 FontSize = 16,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
+                Foreground = GetSafeBrush("TextPrimaryBrush", WpfBrushes.Black),
                 VerticalAlignment = WpfVerticalAlignment.Center
             };
             headerPanel.Children.Add(titleBlock);
@@ -118,7 +118,7 @@ namespace WinRemoteSharp
             var promptBlock = new TextBlock
             {
                 Text = prompt,
-                Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
+                Foreground = GetSafeBrush("TextPrimaryBrush", WpfBrushes.Black),
                 FontSize = 13,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 16),
@@ -130,7 +130,7 @@ namespace WinRemoteSharp
             // === 第2行：输入框 ===
             var inputContainer = new Border
             {
-                Background = GetSafeBrush("BgCardBrush", Brushes.White),
+                Background = GetSafeBrush("BgCardBrush", WpfBrushes.White),
                 CornerRadius = new CornerRadius(8),
                 BorderBrush = GetSafeBrush("BorderLightBrush", new SolidColorBrush(Colors.LightGray)),
                 BorderThickness = new Thickness(1.5),
@@ -145,10 +145,10 @@ namespace WinRemoteSharp
                     Padding = new Thickness(14, 10, 14, 10),
                     BorderThickness = new Thickness(0),
                     Background = WpfBrushes.Transparent,
-                    Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
+                    Foreground = GetSafeBrush("TextPrimaryBrush", WpfBrushes.Black),
                     FontSize = 14,
                     VerticalContentAlignment = WpfVerticalAlignment.Center,
-                    CaretBrush = GetSafeBrush("MintMainBrush", Brushes.Teal),
+                    CaretBrush = GetSafeBrush("MintMainBrush", WpfBrushes.Teal),
                 };
                 _passwordBox.Focus();
                 inputContainer.Child = _passwordBox;
@@ -161,10 +161,10 @@ namespace WinRemoteSharp
                     Padding = new Thickness(14, 10, 14, 10),
                     BorderThickness = new Thickness(0),
                     Background = WpfBrushes.Transparent,
-                    Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
+                    Foreground = GetSafeBrush("TextPrimaryBrush", WpfBrushes.Black),
                     FontSize = 14,
                     VerticalContentAlignment = WpfVerticalAlignment.Center,
-                    CaretBrush = GetSafeBrush("MintMainBrush", Brushes.Teal),
+                    CaretBrush = GetSafeBrush("MintMainBrush", WpfBrushes.Teal),
                 };
                 _textBox.Focus();
                 _textBox.SelectAll();
@@ -230,8 +230,8 @@ namespace WinRemoteSharp
                 Padding = new Thickness(24, 10, 24, 10),
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = GetSafeBrush("TextLightBrush", Brushes.White),
-                Background = GetSafeBrush(brushKey, Brushes.Teal),
+                Foreground = GetSafeBrush("TextLightBrush", WpfBrushes.White),
+                Background = GetSafeBrush(brushKey, WpfBrushes.Teal),
                 BorderThickness = new Thickness(0),
                 Cursor = WpfCursors.Hand,
                 MinWidth = 88
@@ -256,7 +256,7 @@ namespace WinRemoteSharp
             // 触发器
             // IsMouseOver
             var mouseOverTrigger = new Trigger { Property = WpfButton.IsMouseOverProperty, Value = true };
-            mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, GetSafeBrush(hoverBrushKey, Brushes.DarkGreen)));
+            mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, GetSafeBrush(hoverBrushKey, WpfBrushes.DarkGreen)));
             template.Triggers.Add(mouseOverTrigger);
 
             // IsPressed
