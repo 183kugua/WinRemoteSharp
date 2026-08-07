@@ -13,13 +13,16 @@ namespace WinRemoteSharp
             AppDomain.CurrentDomain.UnhandledException += (s, args) => Log(args.ExceptionObject as Exception);
             DispatcherUnhandledException += (s, args) => { Log(args.Exception); args.Handled = true; };
 
-            bool startMinimized = false;
+            bool showWindow = false;
             bool headless = false;
+
             foreach (string arg in e.Args)
             {
                 string a = arg.ToLowerInvariant();
-                if (a == "--minimized" || a == "-m") startMinimized = true;
-                else if (a == "--headless") headless = true;
+                if (a == "--show" || a == "-s")
+                    showWindow = true;
+                else if (a == "--headless")
+                    headless = true;
             }
 
             if (headless)
@@ -41,7 +44,10 @@ namespace WinRemoteSharp
                 }
                 catch (Exception ex) { Log(ex); }
 
-                if (startMinimized) mw.Hide();
+                if (!showWindow)
+                    mw.Hide();
+                else
+                    mw.Show();
             }
         }
 
