@@ -4,10 +4,14 @@ using System.Text.Json;
 
 namespace WinRemoteSharp.Core
 {
+    /// <summary>
+    /// 持久化配置（来自 config.json）。与服务端默认 WS 地址保持一致：ws://127.0.0.1:6190/winremote
+    /// </summary>
     public class Config
     {
-        public string ServerUrl { get; set; } = "ws://127.0.0.1:8000/ws/winremote";
+        public string ServerUrl { get; set; } = "ws://127.0.0.1:6190/winremote";
         public string Token { get; set; } = "";
+        public string AgentId { get; set; } = "";
         public int ReconnectInterval { get; set; } = 5;
         public int HeartbeatInterval { get; set; } = 30;
         public bool AutoStart { get; set; } = false;
@@ -20,8 +24,7 @@ namespace WinRemoteSharp.Core
         public int LogLevel { get; set; } = 2;
         public int ConnectionTimeout { get; set; } = 15;
         public bool EnableServiceControl { get; set; } = true;
-        
-        // 新增：MainWindow.xaml.cs 用到的安全/高级设置
+
         public int MaxOutputBytes { get; set; } = 65536;
         public int MaxReadBytes { get; set; } = 1048576;
         public string BlockedKeywords { get; set; } = "";
@@ -76,7 +79,7 @@ namespace WinRemoteSharp.Core
 
         public static void ApplyDefaults(Config cfg)
         {
-            if (string.IsNullOrEmpty(cfg.ServerUrl)) cfg.ServerUrl = "ws://127.0.0.1:8000/ws/winremote";
+            if (string.IsNullOrEmpty(cfg.ServerUrl)) cfg.ServerUrl = "ws://127.0.0.1:6190/winremote";
             if (cfg.ReconnectInterval <= 0) cfg.ReconnectInterval = 5;
             if (cfg.HeartbeatInterval <= 0) cfg.HeartbeatInterval = 30;
             if (cfg.ScreenshotQuality <= 0 || cfg.ScreenshotQuality > 100) cfg.ScreenshotQuality = 80;
@@ -86,8 +89,7 @@ namespace WinRemoteSharp.Core
             if (string.IsNullOrEmpty(cfg.ServiceName)) cfg.ServiceName = "WinRemoteAgent";
             if (string.IsNullOrEmpty(cfg.LogPath)) cfg.LogPath = "logs";
             if (cfg.LogLevel < 0 || cfg.LogLevel > 5) cfg.LogLevel = 2;
-            
-            // 新增属性的默认值
+
             if (cfg.MaxOutputBytes <= 0) cfg.MaxOutputBytes = 65536;
             if (cfg.MaxReadBytes <= 0) cfg.MaxReadBytes = 1048576;
             if (cfg.BlockedKeywords == null) cfg.BlockedKeywords = "";
