@@ -81,7 +81,7 @@ namespace WinRemoteSharp
                 Debug.WriteLine($"[TrayManager] WPF Resource load failed: {ex.Message}");
             }
 
-            // 最终回退：生成一个简单的绿色图标
+            // 最终回退：生成绿色盾牌图标
             try
             {
                 _trayIconBitmap = new System.Drawing.Bitmap(32, 32);
