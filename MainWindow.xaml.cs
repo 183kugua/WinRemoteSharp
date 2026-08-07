@@ -1,11 +1,9 @@
 using System;
-#nullable enable
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using WinRemoteSharp.Core;
 
@@ -13,10 +11,10 @@ namespace WinRemoteSharp
 {
     public partial class MainWindow : Window
     {
-        private Core.AgentClient? _agent;
+        private Core.AgentClient _agent;
         private Core.Config _config;
-        private Core.ServiceManager? _svcMgr;
-        private TrayManager? _trayMgr;
+        private Core.ServiceManager _svcMgr;
+        private TrayManager _trayMgr;
         internal bool _closingToTray = true;
 
         public bool IsConnected => _agent?.IsConnected ?? false;
@@ -24,52 +22,32 @@ namespace WinRemoteSharp
         public MainWindow()
         {
             InitializeComponent();
-            
-            try
-            {
-                var iconUri = new Uri("pack://application:,,,/Resources/App.ico");
-                Icon = System.Windows.Media.Imaging.BitmapFrame.Create(iconUri);
-            }
-            catch { }
-            
+            try { Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Resources/App.ico")); } catch { }
             _config = Core.ConfigManager.Load();
             _svcMgr = new Core.ServiceManager();
-
-            Loaded += MainWindow_Loaded;
-            Closed += MainWindow_Closed;
-            Closing += MainWindow_Closing;
+            Loaded += OnLoaded;
+            Closing += OnClosing;
         }
 
-        public void SetTrayManager(TrayManager trayMgr)
-        {
-            _trayMgr = trayMgr;
-        }
+        public void SetTrayManager(TrayManager tm) => _trayMgr = tm;
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            WindowState = WindowState.Normal;
-
             LoadSettingsToUI();
             RefreshSystemInfo();
             RefreshServiceStatus();
             AddLog("WinRemote Agent V1.2 已就绪");
-
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (Opacity < 0.01)
-                    Opacity = 1.0;
-                Activate();
-                try { TxtServerUrl.Focus(); TxtServerUrl.SelectAll(); } catch { }
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            Activate();
+            try { TxtServerUrl.Focus(); } catch { }
         }
 
-        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_closingToTray)
             {
                 e.Cancel = true;
                 Hide();
-                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托盘，双击图标显示窗口", System.Windows.Forms.ToolTipIcon.Info);
+                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托盘，双击显示");
             }
             else
             {
@@ -78,260 +56,237 @@ namespace WinRemoteSharp
             }
         }
 
-        private void MainWindow_Closed(object? sender, EventArgs e)
-        {
-            _agent?.DisconnectAsync().GetAwaiter().GetResult();
-            _svcMgr?.Dispose();
-        }
-
         public void AddLog(string msg)
         {
-            string line = $"[{DateTime.Now:HH:mm:ss}] {msg}";
+            var line = $"[{DateTime.Now:HH:mm:ss}] {msg}";
             Dispatcher.Invoke(() =>
             {
-                TxtLog.AppendText(line + Environment.NewLine);
+                TxtLog.AppendText(line + "\n");
                 TxtLog.ScrollToEnd();
-                TxtFullLog.AppendText(line + Environment.NewLine);
+                TxtFullLog.AppendText(line + "\n");
                 TxtFullLog.ScrollToEnd();
             });
         }
 
         private void UpdateStatusDot(bool connected)
         {
-            StatusDot.Fill = connected
-                ? new SolidColorBrush(Colors.LimeGreen)
-                : new SolidColorBrush(Colors.Red);
+            StatusDot.Fill = connected ? new SolidColorBrush(Colors.LimeGreen) : new SolidColorBrush(Colors.Red);
             StatusText.Text = connected ? "已连接" : "Agent 已停止";
             _trayMgr?.UpdateConnectionStatus(connected);
         }
 
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent?.IsConnected == true) { AddLog("Agent 已在运行"); return; }
+            if (_agent?.IsConnected == true) { AddLog("已在运行"); return; }
             SyncUIToConfig();
             Core.ConfigManager.Save(_config);
-            var agentConfig = new Core.AgentConfig
+            _agent = new Core.AgentClient(new Core.AgentConfig
             {
                 ServerUrl = TxtServerUrl.Text.Trim(),
                 Token = TxtToken.Password,
                 AgentId = TxtAgentId.Text.Trim(),
-                HeartbeatIntervalSec = TryParseInt(TxtHeartbeat.Text, 30),
-                CommandTimeoutSec = TryParseInt(TxtShellTimeout.Text, 30),
-                EnableKeyboard = true, EnableMouse = true,
+                HeartbeatIntervalSec = Int(TxtHeartbeat.Text, 30),
+                CommandTimeoutSec = Int(TxtShellTimeout.Text, 30),
+                EnableKeyboard = true,
+                EnableMouse = true,
                 EnableFileWrite = ChkAllowWrite?.IsChecked ?? false,
                 FileReadWhitelist = (TxtWhitelist.Text ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries),
-                ScreenshotFormat = "jpg", ReconnectBaseDelaySec = 2, ReconnectMaxDelaySec = 60
-            };
-            _agent = new Core.AgentClient(agentConfig);
+                ScreenshotFormat = "jpg",
+                ReconnectBaseDelaySec = 2,
+                ReconnectMaxDelaySec = 60
+            });
             _agent.OnLog += AddLog;
-            _agent.OnConnectionChanged += (connected) => { Dispatcher.Invoke(() => UpdateStatusDot(connected)); };
+            _agent.OnConnectionChanged += c => Dispatcher.Invoke(() => UpdateStatusDot(c));
             BtnConnect.IsEnabled = false;
-            try
-            {
-                await Task.Run(async () =>
-                {
-                    try { await _agent.ConnectWithRetryAsync(); }
-                    catch (Exception ex) { AddLog($"连接失败: {ex.Message}"); }
-                    finally { Dispatcher.Invoke(() => BtnConnect.IsEnabled = true); }
-                });
-            }
-            catch (Exception ex) { AddLog($"启动异常: {ex.Message}"); BtnConnect.IsEnabled = true; }
+            try { await Task.Run(() => _agent.ConnectWithRetryAsync()); }
+            catch (Exception ex) { AddLog($"连接失败: {ex.Message}"); }
+            BtnConnect.IsEnabled = true;
         }
 
         private async void BtnDisconnect_Click(object sender, RoutedEventArgs e)
         {
-            if (_agent != null) { await _agent.DisconnectAsync(); _agent = null; AddLog("Agent 已停止"); }
+            if (_agent != null) { await _agent.DisconnectAsync(); _agent = null; AddLog("已停止"); }
         }
 
-        private void BtnShell_Click(object sender, RoutedEventArgs e)
+        private void BtnShell_Click(object sender, RoutedEventArgs e) => AskAndRun("CMD 命令", "cmd");
+        private void BtnPowershell_Click(object sender, RoutedEventArgs e) => AskAndRun("PowerShell 命令", "powershell");
+
+        private void AskAndRun(string title, string shell)
         {
-            var dlg = new InputDialog("执行 CMD 命令", "请输入命令:") { Owner = this };
+            var dlg = new InputDialog(title, "请输入命令:") { Owner = this };
             if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
-            { TxtTestCommand.Text = dlg.InputText; RunShellCommand(dlg.InputText, "cmd"); }
+            {
+                TxtTestCommand.Text = dlg.InputText;
+                _ = RunCmdAsync(dlg.InputText, shell);
+            }
         }
 
-        private void BtnPowershell_Click(object sender, RoutedEventArgs e)
+        private async Task RunCmdAsync(string cmd, string shell)
         {
-            var dlg = new InputDialog("执行 PowerShell 命令", "请输入命令:") { Owner = this };
-            if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
-            { TxtTestCommand.Text = dlg.InputText; RunShellCommand(dlg.InputText, "powershell"); }
-        }
-
-        private async void RunShellCommand(string cmd, string shell)
-        {
-            AddLog($"执行 [{shell}]: {cmd}"); TxtTestResult.Text = "执行中...";
+            AddLog($"[{shell}] {cmd}");
+            TxtTestResult.Text = "执行中...";
             try
             {
                 var psi = new ProcessStartInfo
                 {
                     FileName = shell == "powershell" ? "powershell.exe" : "cmd.exe",
                     Arguments = shell == "powershell" ? $"-NoProfile -Command \"{cmd}\"" : $"/c {cmd}",
-                    RedirectStandardOutput = true, RedirectStandardError = true,
-                    UseShellExecute = false, CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
                     StandardOutputEncoding = System.Text.Encoding.UTF8,
                     StandardErrorEncoding = System.Text.Encoding.UTF8
                 };
-                using var proc = Process.Start(psi)!;
-                var outputTask = proc.StandardOutput.ReadToEndAsync();
-                var errorTask = proc.StandardError.ReadToEndAsync();
-                var timeoutTask = Task.Delay(30000);
-                var completed = await Task.WhenAny(Task.WhenAll(outputTask, errorTask), timeoutTask);
-                if (completed == timeoutTask) { try { proc.Kill(); } catch { } TxtTestResult.Text = "[ERROR] 命令执行超时"; return; }
-                string output = outputTask.Result, err = errorTask.Result;
-                TxtTestResult.Text = string.IsNullOrEmpty(err) ? output : output + "\n[stderr] " + err;
-                AddLog("执行完成");
+                using var p = Process.Start(psi);
+                var t = Task.WhenAll(p.StandardOutput.ReadToEndAsync(), p.StandardError.ReadToEndAsync());
+                if (await Task.WhenAny(t, Task.Delay(30000)) == t)
+                    TxtTestResult.Text = string.IsNullOrEmpty(t.Result[1]) ? t.Result[0] : t.Result[0] + "\n[stderr] " + t.Result[1];
+                else { try { p.Kill(); } catch { } TxtTestResult.Text = "[超时]"; }
+                AddLog("完成");
             }
-            catch (Exception ex) { TxtTestResult.Text = "错误: " + ex.Message; AddLog($"执行失败: {ex.Message}"); }
+            catch (Exception ex) { TxtTestResult.Text = ex.Message; }
         }
 
         private void BtnScreenshot_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var bounds = System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
-                using var bmp = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
-                using (var g = System.Drawing.Graphics.FromImage(bmp)) g.CopyFromScreen(bounds.Location, System.Drawing.Point.Empty, bounds.Size);
-                string path = Path.Combine(Path.GetTempPath(), $"WinRemote_Screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+                var b = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                using var bmp = new System.Drawing.Bitmap(b.Width, b.Height);
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                    g.CopyFromScreen(b.Location, System.Drawing.Point.Empty, b.Size);
+                var path = Path.Combine(Path.GetTempPath(), $"WinRemote_{DateTime.Now:yyyyMMdd_HHmmss}.png");
                 bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
-                TxtTestResult.Text = $"截图已保存到: {path}"; AddLog($"截图已保存: {path}");
+                TxtTestResult.Text = path;
+                AddLog("截图已保存");
             }
-            catch (Exception ex) { AddLog($"截图失败: {ex.Message}"); }
+            catch (Exception ex) { AddLog(ex.Message); }
         }
 
         private void BtnKeypress_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new InputDialog("模拟按键", "请输入要发送的按键组合 (如 ^{ESC}):") { Owner = this };
+            var dlg = new InputDialog("模拟按键", "组合键如 ^{ESC}:") { Owner = this };
             if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
             {
-                try { System.Windows.Forms.SendKeys.SendWait(dlg.InputText); AddLog($"已发送按键: {dlg.InputText}"); }
-                catch (Exception ex) { AddLog($"发送失败: {ex.Message}"); }
+                try { System.Windows.Forms.SendKeys.SendWait(dlg.InputText); AddLog($"已发送: {dlg.InputText}"); }
+                catch (Exception ex) { AddLog(ex.Message); }
             }
         }
 
         private void BtnMouse_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                int x = System.Windows.Forms.Cursor.Position.X, y = System.Windows.Forms.Cursor.Position.Y;
-                Core.AgentClient.mouse_event(Core.AgentClient.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-                Core.AgentClient.mouse_event(Core.AgentClient.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-                AddLog($"左键点击 @ ({x},{y})");
-            }
-            catch (Exception ex) { AddLog($"操作失败: {ex.Message}"); }
+            var p = System.Windows.Forms.Cursor.Position;
+            Core.AgentClient.mouse_event(0x02, 0, 0, 0, 0);
+            Core.AgentClient.mouse_event(0x04, 0, 0, 0, 0);
+            AddLog($"点击 ({p.X},{p.Y})");
         }
 
         private void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new InputDialog("打开程序/文件", "请输入程序路径或文件路径:") { Owner = this };
+            var dlg = new InputDialog("打开程序/文件", "路径:") { Owner = this };
             if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
             {
-                try { Process.Start(new ProcessStartInfo(dlg.InputText) { UseShellExecute = true }); AddLog($"已启动: {dlg.InputText}"); }
-                catch (Exception ex) { AddLog($"启动失败: {ex.Message}"); }
+                try { Process.Start(new ProcessStartInfo(dlg.InputText) { UseShellExecute = true }); }
+                catch (Exception ex) { AddLog(ex.Message); }
             }
         }
 
         private void BtnReadFile_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new InputDialog("读取文件", "请输入文件路径:") { Owner = this };
+            var dlg = new InputDialog("读取文件", "路径:") { Owner = this };
             if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.InputText))
             {
-                try { string content = File.ReadAllText(dlg.InputText); TxtTestResult.Text = content; AddLog($"已读取: {dlg.InputText} ({content.Length} 字节)"); }
-                catch (Exception ex) { TxtTestResult.Text = "错误: " + ex.Message; AddLog($"读取失败: {ex.Message}"); }
+                try { TxtTestResult.Text = File.ReadAllText(dlg.InputText); }
+                catch (Exception ex) { TxtTestResult.Text = ex.Message; }
             }
         }
 
-        private void BtnWriteFile_Click(object sender, RoutedEventArgs e) { AddLog("文件写入功能请通过远程连接使用"); }
+        private void BtnWriteFile_Click(object sender, RoutedEventArgs e) => AddLog("请通过远程连接使用");
 
         private async void BtnSendTest_Click(object sender, RoutedEventArgs e)
         {
-            string url = TxtServerUrl.Text.Trim();
-            if (string.IsNullOrEmpty(url)) { AddLog("请输入服务器地址"); return; }
-            AddLog($"测试连接: {url}");
-            await Task.Run(async () =>
+            var url = TxtServerUrl.Text.Trim();
+            if (string.IsNullOrEmpty(url)) return;
+            try
             {
-                try
-                {
-                    using var ws = new System.Net.WebSockets.ClientWebSocket();
-                    var cts = new System.Threading.CancellationTokenSource(5000);
-                    await ws.ConnectAsync(new Uri(url), cts.Token);
-                    Dispatcher.Invoke(() => AddLog("连接成功！服务器可达"));
-                    await ws.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.NormalClosure, "test", System.Threading.CancellationToken.None);
-                }
-                catch (Exception ex) { Dispatcher.Invoke(() => AddLog($"连接失败: {ex.Message}")); }
-            });
+                using var ws = new System.Net.WebSockets.ClientWebSocket();
+                await ws.ConnectAsync(new Uri(url), new System.Threading.CancellationTokenSource(5000).Token);
+                AddLog("服务器可达");
+            }
+            catch (Exception ex) { AddLog($"失败: {ex.Message}"); }
         }
 
-        private void BtnClearLog_Click(object sender, RoutedEventArgs e) { TxtLog.Clear(); }
+        private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtLog.Clear();
 
         private void LoadSettingsToUI()
         {
             var c = _config;
-            TxtServerUrl.Text = c.ServerUrl; TxtToken.Password = c.Token; TxtAgentId.Text = c.AgentId;
-            if (TxtHeartbeat != null) TxtHeartbeat.Text = c.HeartbeatInterval.ToString();
-            if (TxtShellTimeout != null) TxtShellTimeout.Text = c.ConnectionTimeout.ToString();
-            if (TxtMaxOutput != null) TxtMaxOutput.Text = c.MaxOutputBytes.ToString();
+            TxtServerUrl.Text = c.ServerUrl;
+            TxtToken.Password = c.Token;
+            TxtAgentId.Text = c.AgentId;
+            SafeSet(TxtHeartbeat, c.HeartbeatInterval.ToString());
+            SafeSet(TxtShellTimeout, c.ConnectionTimeout.ToString());
+            SafeSet(TxtMaxOutput, c.MaxOutputBytes.ToString());
+            SafeSet(TxtScreenshotQuality, c.ScreenshotQuality > 0 ? c.ScreenshotQuality.ToString() : "80");
+            SafeSet(TxtMaxReadBytes, c.MaxReadBytes > 0 ? c.MaxReadBytes.ToString() : "1048576");
+            SafeSet(TxtWhitelist, string.Join("\n", c.FileReadWhitelist ?? new string[0]));
+            SafeSet(TxtBlacklist, c.BlockedKeywords ?? "");
             if (CmbScreenshotFmt != null) CmbScreenshotFmt.SelectedIndex = 0;
-            if (TxtScreenshotQuality != null) TxtScreenshotQuality.Text = c.ScreenshotQuality > 0 ? c.ScreenshotQuality.ToString() : "80";
             if (ChkAllowPowershell != null) ChkAllowPowershell.IsChecked = c.AllowPowerShell;
             if (ChkAllowWrite != null) ChkAllowWrite.IsChecked = c.AllowWrite;
             if (ChkAutoReconnect != null) ChkAutoReconnect.IsChecked = c.AutoReconnect;
             if (ChkStrictWhitelist != null) ChkStrictWhitelist.IsChecked = c.StrictWhitelist;
             if (ChkPasswordGuard != null) ChkPasswordGuard.IsChecked = c.PasswordGuardEnabled;
-            if (TxtPasswordGuard != null) TxtPasswordGuard.Password = c.PasswordGuard ?? "";
-            if (TxtMaxReadBytes != null) TxtMaxReadBytes.Text = c.MaxReadBytes > 0 ? c.MaxReadBytes.ToString() : "1048576";
-            if (TxtWhitelist != null) TxtWhitelist.Text = string.Join(Environment.NewLine, _config.FileReadWhitelist ?? Array.Empty<string>());
-            if (TxtBlacklist != null) TxtBlacklist.Text = c.BlockedKeywords ?? "";
+            SafeSetPassword(TxtPasswordGuard, c.PasswordGuard);
         }
 
         private void SyncUIToConfig()
         {
             var c = _config;
-            c.ServerUrl = TxtServerUrl.Text.Trim(); c.Token = TxtToken.Password; c.AgentId = TxtAgentId.Text.Trim();
-            if (int.TryParse(TxtHeartbeat.Text, out int hb)) c.HeartbeatInterval = hb;
-            if (int.TryParse(TxtShellTimeout.Text, out int to)) c.ConnectionTimeout = to;
-            if (int.TryParse(TxtMaxOutput.Text, out int mo)) c.MaxOutputBytes = mo;
-            if (int.TryParse(TxtScreenshotQuality.Text, out int sq)) c.ScreenshotQuality = sq;
+            c.ServerUrl = TxtServerUrl.Text.Trim();
+            c.Token = TxtToken.Password;
+            c.AgentId = TxtAgentId.Text.Trim();
+            c.HeartbeatInterval = Int(TxtHeartbeat.Text, 30);
+            c.ConnectionTimeout = Int(TxtShellTimeout.Text, 30);
+            c.MaxOutputBytes = Int(TxtMaxOutput.Text, 65536);
+            c.ScreenshotQuality = Int(TxtScreenshotQuality.Text, 80);
             c.AllowPowerShell = ChkAllowPowershell?.IsChecked ?? true;
             c.AllowWrite = ChkAllowWrite?.IsChecked ?? false;
             c.AutoReconnect = ChkAutoReconnect?.IsChecked ?? true;
             c.StrictWhitelist = ChkStrictWhitelist?.IsChecked ?? false;
             c.PasswordGuardEnabled = ChkPasswordGuard?.IsChecked ?? false;
             c.PasswordGuard = TxtPasswordGuard?.Password ?? "";
-            if (int.TryParse(TxtMaxReadBytes?.Text, out int mr)) c.MaxReadBytes = mr;
+            c.MaxReadBytes = Int(TxtMaxReadBytes?.Text, 1048576);
             c.BlockedKeywords = TxtBlacklist?.Text ?? "";
             c.FileReadWhitelist = (TxtWhitelist?.Text ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         }
 
         private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)
         {
-            SyncUIToConfig(); Core.ConfigManager.Save(_config); AddLog("设置已保存");
-            System.Windows.Forms.MessageBox.Show("设置已保存！", "WinRemote", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+            SyncUIToConfig();
+            Core.ConfigManager.Save(_config);
+            AddLog("已保存");
         }
 
         private void RefreshServiceStatus()
         {
             if (_svcMgr == null) return;
-            var (running, state) = _svcMgr.GetServiceState();
-            ServiceStatusText.Text = state;
-            ServiceDot.Fill = running ? new SolidColorBrush(Colors.LimeGreen) : new SolidColorBrush(Colors.Gray);
+            var (r, s) = _svcMgr.GetServiceState();
+            ServiceStatusText.Text = s;
+            ServiceDot.Fill = r ? new SolidColorBrush(Colors.LimeGreen) : new SolidColorBrush(Colors.Gray);
             NssmStatusText.Text = _svcMgr.IsNssmAvailable() ? "已安装" : "未安装";
         }
 
-        private void BtnSvcInstall_Click(object sender, RoutedEventArgs e) { AddLog(_svcMgr!.Install()); RefreshServiceStatus(); }
-        private void BtnSvcUninstall_Click(object sender, RoutedEventArgs e) { AddLog(_svcMgr!.Uninstall()); RefreshServiceStatus(); }
-        private void BtnSvcStart_Click(object sender, RoutedEventArgs e) { AddLog(_svcMgr!.Start()); RefreshServiceStatus(); }
-        private void BtnSvcStop_Click(object sender, RoutedEventArgs e) { AddLog(_svcMgr!.Stop()); RefreshServiceStatus(); }
-        private void BtnSvcRestart_Click(object sender, RoutedEventArgs e) { AddLog(_svcMgr!.Restart()); RefreshServiceStatus(); }
-
-        private void BtnDownloadNssm_Click(object sender, RoutedEventArgs e)
-        {
-            try { Process.Start(new ProcessStartInfo("https://nssm.cc/download") { UseShellExecute = true }); AddLog("已打开 NSSM 下载页面"); }
-            catch { AddLog("无法打开浏览器"); }
-        }
-
-        private void BtnViewLogs_Click(object sender, RoutedEventArgs e) { TxtServiceLog.Text = _svcMgr!.ReadServiceLog(); }
-        private void BtnClearServiceLog_Click(object sender, RoutedEventArgs e) { TxtServiceLog.Clear(); }
-        private void BtnRefreshLog_Click(object sender, RoutedEventArgs e) { TxtFullLog.ScrollToEnd(); }
+        private void BtnSvcInstall_Click(object s, RoutedEventArgs e) { AddLog(_svcMgr.Install()); RefreshServiceStatus(); }
+        private void BtnSvcUninstall_Click(object s, RoutedEventArgs e) { AddLog(_svcMgr.Uninstall()); RefreshServiceStatus(); }
+        private void BtnSvcStart_Click(object s, RoutedEventArgs e) { AddLog(_svcMgr.Start()); RefreshServiceStatus(); }
+        private void BtnSvcStop_Click(object s, RoutedEventArgs e) { AddLog(_svcMgr.Stop()); RefreshServiceStatus(); }
+        private void BtnSvcRestart_Click(object s, RoutedEventArgs e) { AddLog(_svcMgr.Restart()); RefreshServiceStatus(); }
+        private void BtnDownloadNssm_Click(object s, RoutedEventArgs e) { try { Process.Start(new ProcessStartInfo("https://nssm.cc/download") { UseShellExecute = true }); } catch { } }
+        private void BtnViewLogs_Click(object s, RoutedEventArgs e) { TxtServiceLog.Text = _svcMgr.ReadServiceLog(); }
+        private void BtnClearServiceLog_Click(object s, RoutedEventArgs e) => TxtServiceLog.Clear();
+        private void BtnRefreshLog_Click(object s, RoutedEventArgs e) => TxtFullLog.ScrollToEnd();
 
         private void RefreshSystemInfo()
         {
@@ -341,22 +296,24 @@ namespace WinRemoteSharp
             TxtDotNetVer.Text = Environment.Version.ToString();
         }
 
-        public void TrayConnect() => Dispatcher.Invoke(() => BtnConnect_Click(null!, null!));
-        public void TrayDisconnect() => Dispatcher.Invoke(() => BtnDisconnect_Click(null!, null!));
-        public void TrayInstallService() => Dispatcher.Invoke(() => BtnSvcInstall_Click(null!, null!));
-        public void TrayUninstallService() => Dispatcher.Invoke(() => BtnSvcUninstall_Click(null!, null!));
-        public void TrayStartService() => Dispatcher.Invoke(() => BtnSvcStart_Click(null!, null!));
-        public void TrayStopService() => Dispatcher.Invoke(() => BtnSvcStop_Click(null!, null!));
-        public void TrayServiceStatus() => Dispatcher.Invoke(() => System.Windows.Forms.MessageBox.Show("服务状态请查看「系统服务」选项卡", "WinRemote - 服务状态"));
-        public void TrayCheckUpdate() => Dispatcher.Invoke(() => System.Windows.Forms.MessageBox.Show("WinRemote Agent V1.2\n\n当前已是最新版本。", "关于"));
+        public void TrayConnect() => Dispatcher.Invoke(() => BtnConnect_Click(null, null));
+        public void TrayDisconnect() => Dispatcher.Invoke(() => BtnDisconnect_Click(null, null));
+        public void TrayInstallService() => Dispatcher.Invoke(() => BtnSvcInstall_Click(null, null));
+        public void TrayUninstallService() => Dispatcher.Invoke(() => BtnSvcUninstall_Click(null, null));
+        public void TrayStartService() => Dispatcher.Invoke(() => BtnSvcStart_Click(null, null));
+        public void TrayStopService() => Dispatcher.Invoke(() => BtnSvcStop_Click(null, null));
+        public void TrayServiceStatus() => Dispatcher.Invoke(() => System.Windows.Forms.MessageBox.Show("请查看「系统服务」选项卡", "服务状态"));
+        public void TrayCheckUpdate() => Dispatcher.Invoke(() => System.Windows.Forms.MessageBox.Show("WinRemote Agent V1.2", "关于"));
         public void TrayRefreshLogs() => Dispatcher.Invoke(() => TxtFullLog.ScrollToEnd());
         public void TrayOpenLogDir() => Dispatcher.Invoke(() =>
         {
-            string logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "WinRemote", "logs");
-            if (!Directory.Exists(logDir)) Directory.CreateDirectory(logDir);
-            Process.Start("explorer.exe", logDir);
+            var d = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "WinRemote", "logs");
+            if (!Directory.Exists(d)) Directory.CreateDirectory(d);
+            Process.Start("explorer.exe", d);
         });
 
-        private static int TryParseInt(string s, int def) => int.TryParse(s, out int v) ? v : def;
+        private static int Int(string s, int def) => int.TryParse(s, out int v) ? v : def;
+        private static void SafeSet(System.Windows.Controls.TextBox tb, string v) { if (tb != null) tb.Text = v; }
+        private static void SafeSetPassword(System.Windows.Controls.PasswordBox pb, string v) { if (pb != null) pb.Password = v ?? ""; }
     }
 }
