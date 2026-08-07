@@ -11,14 +11,14 @@ namespace WinRemoteSharp
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            // 全局未捕获异常 -> 落地日志
             AppDomain.CurrentDomain.UnhandledException += (s, args) => LogException(args.ExceptionObject as Exception, "AppDomain");
             DispatcherUnhandledException += (s, args) => { LogException(args.Exception, "Dispatcher"); args.Handled = true; };
             TaskScheduler.UnobservedTaskException += (s, args) => { LogException(args.Exception, "TaskScheduler"); args.SetObserved(); };
 
+            this.StartupUri = null;
+
             base.OnStartup(e);
 
-            // 检查命令行参数
             bool startMinimized = false;
             bool headless = false;
 
@@ -33,18 +33,15 @@ namespace WinRemoteSharp
 
             if (headless)
             {
-                // 无头模式：不创建 UI，直接运行 HeadlessRunner
+                HeadlessRunner.RunAsync(e.Args).GetAwaiter().GetResult();
                 return;
             }
 
-            // 创建主窗口
             var mainWindow = new MainWindow();
 
-            // 创建托盘管理器
             _trayManager = new TrayManager(mainWindow);
             mainWindow.SetTrayManager(_trayManager);
 
-            // 如果指定了最小化启动，不显示窗口
             if (!startMinimized)
             {
                 mainWindow.Show();
@@ -61,7 +58,7 @@ namespace WinRemoteSharp
                 string line = "[" + time + "] [" + source + "]\n" + ex.ToString() + "\n\n";
                 File.AppendAllText(path, line);
             }
-            catch { /* ignore */ }
+            catch { }
         }
 
         protected override void OnExit(ExitEventArgs e)
