@@ -13,14 +13,14 @@ namespace WinRemoteSharp
             AppDomain.CurrentDomain.UnhandledException += (s, args) => Log(args.ExceptionObject as Exception);
             DispatcherUnhandledException += (s, args) => { Log(args.Exception); args.Handled = true; };
 
-            bool showWindow = false;
+            bool hideWindow = false;
             bool headless = false;
 
             foreach (string arg in e.Args)
             {
                 string a = arg.ToLowerInvariant();
-                if (a == "--show" || a == "-s")
-                    showWindow = true;
+                if (a == "--hide" || a == "-h")
+                    hideWindow = true;
                 else if (a == "--headless")
                     headless = true;
             }
@@ -44,10 +44,16 @@ namespace WinRemoteSharp
                 }
                 catch (Exception ex) { Log(ex); }
 
-                if (!showWindow)
+                // 默认启动时显示窗口 + 托盘图标
+                // 加 --hide 参数则隐藏到托盘
+                if (hideWindow)
+                {
                     mw.Hide();
+                }
                 else
+                {
                     mw.Show();
+                }
             }
         }
 
