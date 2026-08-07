@@ -101,6 +101,7 @@
                                 </Grid.RowDefinitions>
                                 <TextBox Grid.Row="0" x:Name="TxtLog" Height="160" IsReadOnly="True"
                                          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                         VerticalContentAlignment="Top"
                                          FontFamily="Consolas" FontSize="12" Background="#FF1E1E1E" Foreground="#FF4AF626"/>
                                 <Button Grid.Row="1" Content="清空日志" Width="100" Height="28" Margin="0,6,0,0" HorizontalAlignment="Right" Click="BtnClearLog_Click"/>
                             </Grid>
@@ -250,6 +251,7 @@
                         <GroupBox Header="服务日志">
                             <TextBox x:Name="TxtServiceLog" Height="150" IsReadOnly="True"
                                      TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                     VerticalContentAlignment="Top"
                                      FontFamily="Consolas" FontSize="11" Background="#FFF8F8F8"/>
                         </GroupBox>
                     </StackPanel>
@@ -270,6 +272,7 @@
                     </StackPanel>
                     <TextBox Grid.Row="1" x:Name="TxtFullLog" IsReadOnly="True"
                              TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top"
                              FontFamily="Consolas" FontSize="12" Background="#FF1E1E1E" Foreground="#FF4AF626"/>
                 </Grid>
             </TabItem>
@@ -331,6 +334,7 @@
                                 <TextBlock Text="测试结果：" Margin="8,8,0,4"/>
                                 <TextBox x:Name="TxtTestResult" Height="100" IsReadOnly="True"
                                          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                         VerticalContentAlignment="Top"
                                          FontFamily="Consolas" FontSize="11" Background="#FFF8F8F8"/>
                             </StackPanel>
                         </GroupBox>
