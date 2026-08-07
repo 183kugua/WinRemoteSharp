@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Text.RegularExpressions;
 
 namespace WinRemoteSharp.Core
