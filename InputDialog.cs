@@ -53,7 +53,7 @@ namespace WinRemoteSharp
             // 设置自定义图标
             try
             {
-                var iconUri = new Uri("pack://application:,,,/Resources/DialogIcon.png");
+                var iconUri = new Uri("pack://application:,,,/Resources/App.ico");
                 var bitmap = new BitmapImage(iconUri);
                 Icon = bitmap;
             }
@@ -62,9 +62,9 @@ namespace WinRemoteSharp
             // 主容器 - 带阴影的圆角边框
             _mainBorder = new Border
             {
-                Background = (SolidColorBrush)WpfApplication.Current.Resources["BgLightBrush"],
+                Background = GetSafeBrush("BgLightBrush", Brushes.White),
                 CornerRadius = new CornerRadius(16),
-                BorderBrush = (SolidColorBrush)WpfApplication.Current.Resources["CardBorderBrush"],
+                BorderBrush = GetSafeBrush("CardBorderBrush", new SolidColorBrush(Colors.LightGray)),
                 BorderThickness = new Thickness(1.5),
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
@@ -107,7 +107,7 @@ namespace WinRemoteSharp
                 Text = title,
                 FontSize = 16,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
+                Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
                 VerticalAlignment = WpfVerticalAlignment.Center
             };
             headerPanel.Children.Add(titleBlock);
@@ -118,7 +118,7 @@ namespace WinRemoteSharp
             var promptBlock = new TextBlock
             {
                 Text = prompt,
-                Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
+                Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
                 FontSize = 13,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 16),
@@ -130,9 +130,9 @@ namespace WinRemoteSharp
             // === 第2行：输入框 ===
             var inputContainer = new Border
             {
-                Background = (SolidColorBrush)WpfApplication.Current.Resources["BgCardBrush"],
+                Background = GetSafeBrush("BgCardBrush", Brushes.White),
                 CornerRadius = new CornerRadius(8),
-                BorderBrush = (SolidColorBrush)WpfApplication.Current.Resources["BorderLightBrush"],
+                BorderBrush = GetSafeBrush("BorderLightBrush", new SolidColorBrush(Colors.LightGray)),
                 BorderThickness = new Thickness(1.5),
                 Padding = new Thickness(0)
             };
@@ -145,10 +145,10 @@ namespace WinRemoteSharp
                     Padding = new Thickness(14, 10, 14, 10),
                     BorderThickness = new Thickness(0),
                     Background = WpfBrushes.Transparent,
-                    Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
+                    Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
                     FontSize = 14,
                     VerticalContentAlignment = WpfVerticalAlignment.Center,
-                    CaretBrush = (SolidColorBrush)WpfApplication.Current.Resources["MintMainBrush"]
+                    CaretBrush = GetSafeBrush("MintMainBrush", Brushes.Teal),
                 };
                 _passwordBox.Focus();
                 inputContainer.Child = _passwordBox;
@@ -161,10 +161,10 @@ namespace WinRemoteSharp
                     Padding = new Thickness(14, 10, 14, 10),
                     BorderThickness = new Thickness(0),
                     Background = WpfBrushes.Transparent,
-                    Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextPrimaryBrush"],
+                    Foreground = GetSafeBrush("TextPrimaryBrush", Brushes.Black),
                     FontSize = 14,
                     VerticalContentAlignment = WpfVerticalAlignment.Center,
-                    CaretBrush = (SolidColorBrush)WpfApplication.Current.Resources["MintMainBrush"]
+                    CaretBrush = GetSafeBrush("MintMainBrush", Brushes.Teal),
                 };
                 _textBox.Focus();
                 _textBox.SelectAll();
@@ -230,8 +230,8 @@ namespace WinRemoteSharp
                 Padding = new Thickness(24, 10, 24, 10),
                 FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = (SolidColorBrush)WpfApplication.Current.Resources["TextLightBrush"],
-                Background = (SolidColorBrush)WpfApplication.Current.Resources[brushKey],
+                Foreground = GetSafeBrush("TextLightBrush", Brushes.White),
+                Background = GetSafeBrush(brushKey, Brushes.Teal),
                 BorderThickness = new Thickness(0),
                 Cursor = WpfCursors.Hand,
                 MinWidth = 88
@@ -256,7 +256,7 @@ namespace WinRemoteSharp
             // 触发器
             // IsMouseOver
             var mouseOverTrigger = new Trigger { Property = WpfButton.IsMouseOverProperty, Value = true };
-            mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, (SolidColorBrush)WpfApplication.Current.Resources[hoverBrushKey]));
+            mouseOverTrigger.Setters.Add(new Setter(WpfButton.BackgroundProperty, GetSafeBrush(hoverBrushKey, Brushes.DarkGreen)));
             template.Triggers.Add(mouseOverTrigger);
 
             // IsPressed
@@ -379,6 +379,17 @@ namespace WinRemoteSharp
 
             storyboard.Completed += (s, e) => Close();
             storyboard.Begin();
+        }
+
+        private static SolidColorBrush GetSafeBrush(string resourceKey, SolidColorBrush fallback)
+        {
+            try
+            {
+                if (WpfApplication.Current?.Resources[resourceKey] is SolidColorBrush brush)
+                    return brush;
+            }
+            catch { }
+            return fallback;
         }
 
         private void Confirm()

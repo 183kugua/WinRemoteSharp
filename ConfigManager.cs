@@ -31,6 +31,7 @@ namespace WinRemoteSharp.Core
         public bool StrictWhitelist { get; set; } = false;
         public bool PasswordGuardEnabled { get; set; } = false;
         public string PasswordGuard { get; set; } = "";
+        public string[] FileReadWhitelist { get; set; } = Array.Empty<string>();
     }
 
     public static class ConfigManager
@@ -90,6 +91,7 @@ namespace WinRemoteSharp.Core
             if (cfg.MaxOutputBytes <= 0) cfg.MaxOutputBytes = 65536;
             if (cfg.MaxReadBytes <= 0) cfg.MaxReadBytes = 1048576;
             if (cfg.BlockedKeywords == null) cfg.BlockedKeywords = "";
+            if (cfg.FileReadWhitelist == null) cfg.FileReadWhitelist = Array.Empty<string>();
         }
     }
 }

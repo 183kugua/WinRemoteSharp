@@ -23,6 +23,15 @@ namespace WinRemoteSharp
         public MainWindow()
         {
             InitializeComponent();
+            
+            // 设置窗口图标
+            try
+            {
+                var iconUri = new Uri("pack://application:,,,/Resources/App.ico");
+                Icon = System.Windows.Media.Imaging.BitmapFrame.Create(iconUri);
+            }
+            catch { }
+            
             _config = Core.ConfigManager.Load();
             _svcMgr = new Core.ServiceManager();
 
@@ -347,6 +356,22 @@ namespace WinRemoteSharp
             TxtShellTimeout.Text = c.ConnectionTimeout.ToString();
             TxtMaxOutput.Text = c.MaxOutputBytes.ToString();
             CmbScreenshotFmt.SelectedIndex = 0;
+            
+            // 截图设置
+            TxtScreenshotQuality.Text = c.ScreenshotQuality > 0 ? c.ScreenshotQuality.ToString() : "80";
+            
+            // 安全设置
+            ChkAllowPowershell.IsChecked = c.AllowPowerShell;
+            ChkAllowWrite.IsChecked = c.AllowWrite;
+            ChkAutoReconnect.IsChecked = c.AutoReconnect;
+            ChkStrictWhitelist.IsChecked = c.StrictWhitelist;
+            ChkPasswordGuard.IsChecked = c.PasswordGuardEnabled;
+            TxtPasswordGuard.Password = c.PasswordGuard ?? "";
+            TxtMaxReadBytes.Text = c.MaxReadBytes > 0 ? c.MaxReadBytes.ToString() : "1048576";
+            
+            // 路径白名单 / 黑名单
+            TxtWhitelist.Text = string.Join(Environment.NewLine, _config.FileReadWhitelist ?? Array.Empty<string>());
+            TxtBlacklist.Text = c.BlockedKeywords ?? "";
         }
 
         private void SyncUIToConfig()
@@ -357,6 +382,19 @@ namespace WinRemoteSharp
             if (int.TryParse(TxtHeartbeat.Text, out int hb)) c.HeartbeatInterval = hb;
             if (int.TryParse(TxtShellTimeout.Text, out int to)) c.ConnectionTimeout = to;
             if (int.TryParse(TxtMaxOutput.Text, out int mo)) c.MaxOutputBytes = mo;
+            if (int.TryParse(TxtScreenshotQuality.Text, out int sq)) c.ScreenshotQuality = sq;
+            c.AllowPowerShell = ChkAllowPowershell?.IsChecked ?? true;
+            c.AllowWrite = ChkAllowWrite?.IsChecked ?? false;
+            c.AutoReconnect = ChkAutoReconnect?.IsChecked ?? true;
+            c.StrictWhitelist = ChkStrictWhitelist?.IsChecked ?? false;
+            c.PasswordGuardEnabled = ChkPasswordGuard?.IsChecked ?? false;
+            c.PasswordGuard = TxtPasswordGuard?.Password ?? "";
+            if (int.TryParse(TxtMaxReadBytes?.Text, out int mr)) c.MaxReadBytes = mr;
+            c.BlockedKeywords = TxtBlacklist?.Text ?? "";
+            c.FileReadWhitelist = (TxtWhitelist?.Text ?? "")
+                .Split(new[] { '
+', '
+' }, StringSplitOptions.RemoveEmptyEntries);
         }
 
         private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)

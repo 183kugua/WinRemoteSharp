@@ -335,6 +335,7 @@
             <Setter Property="BorderThickness" Value="1.5"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="{StaticResource MintDeepBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -367,6 +368,7 @@
             <Setter Property="BorderThickness" Value="1.5"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="{StaticResource MintDeepBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="PasswordBox">
