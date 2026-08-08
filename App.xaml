@@ -59,7 +59,7 @@
         <!-- ====== TextBox ====== -->
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
-n            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,8"/>
