@@ -38,7 +38,8 @@ namespace WinRemoteSharp
         {
             try
             {
-                // 图标切换由 App 层处理
+                // App.xaml.cs 中的 _notifyIcon 不可访问，通过反射或委托更新
+                // 这里不做操作，图标切换由 App 层处理
             }
             catch (Exception ex)
             {
