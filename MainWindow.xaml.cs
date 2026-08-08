@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using WpfColor = System.Windows.Media.Color;
+using WpfBrushes = System.Windows.Media.Brushes;
 using WinRemoteSharp.Core;
 
 namespace WinRemoteSharp
@@ -70,12 +72,12 @@ namespace WinRemoteSharp
             {
                 if (b == activeBtn)
                 {
-                    b.Background = new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#10FFFFFF"));
+                    b.Background = new SolidColorBrush((WpfColor)System.Windows.Media.ColorConverter.ConvertFromString("#10FFFFFF"));
                     b.Foreground = (SolidColorBrush)FindResource("TextPrimaryBrush");
                 }
                 else
                 {
-                    b.Background = Brushes.Transparent;
+                    b.Background = WpfBrushes.Transparent;
                     b.Foreground = (SolidColorBrush)FindResource("TextSecondaryBrush");
                 }
             }
@@ -101,8 +103,8 @@ namespace WinRemoteSharp
         private void UpdateStatusDot(bool connected)
         {
             StatusDot.Fill = connected
-                ? new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF00B894"))
-                : new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF5A6280"));
+                ? new SolidColorBrush((WpfColor)System.Windows.Media.ColorConverter.ConvertFromString("#FF00B894"))
+                : new SolidColorBrush((WpfColor)System.Windows.Media.ColorConverter.ConvertFromString("#FF5A6280"));
             StatusText.Text = connected ? "已连接" : "未连接";
             _trayMgr?.UpdateConnectionStatus(connected);
         }
@@ -314,8 +316,8 @@ namespace WinRemoteSharp
             var (r, s) = _svcMgr.GetServiceState();
             ServiceStatusText.Text = s;
             ServiceDot.Fill = r
-                ? new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF00B894"))
-                : new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF5A6280"));
+                ? new SolidColorBrush((WpfColor)System.Windows.Media.ColorConverter.ConvertFromString("#FF00B894"))
+                : new SolidColorBrush((WpfColor)System.Windows.Media.ColorConverter.ConvertFromString("#FF5A6280"));
             NssmStatusText.Text = _svcMgr.IsNssmAvailable() ? "NSSM：已安装" : "NSSM：未安装";
         }
 
