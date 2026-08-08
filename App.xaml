@@ -25,6 +25,28 @@
         <SolidColorBrush x:Key="TextMutedBrush" Color="#FF5A6280"/>
         <SolidColorBrush x:Key="TextAccentBrush" Color="#FFA29BFE"/>
 
+        <!-- ====== 通用动画资源 ====== -->
+        <Storyboard x:Key="FadeInAnimation" x:Shared="False">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25"/>
+        </Storyboard>
+
+        <Storyboard x:Key="CardEnterAnimation" x:Shared="False">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="12" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <Storyboard x:Key="PageEnterAnimation" x:Shared="False">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.2"/>
+        </Storyboard>
+
         <!-- ====== Window 样式 ====== -->
         <Style TargetType="Window">
             <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei, sans-serif"/>
@@ -37,7 +59,7 @@
         <!-- ====== TextBox ====== -->
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+n            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,8"/>
@@ -104,6 +126,12 @@
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -127,6 +155,40 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" To="1.03" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" To="1.03" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.15">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"/>
@@ -154,6 +216,7 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="RenderTransform" Value="{x:Null}"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#10FFFFFF"/>
@@ -176,23 +239,41 @@
             <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="MinHeight" Value="36"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <ToggleButton x:Name="Toggle" ClickMode="Press"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton x:Name="ToggleButton"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          Background="{TemplateBinding Background}"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border x:Name="Bd" CornerRadius="6"
-                                                Background="{StaticResource BgInputBrush}"
-                                                BorderBrush="{StaticResource BorderSubtleBrush}"
-                                                BorderThickness="1" Padding="10,8">
+                                        <Border x:Name="Bd"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="6"
+                                                Padding="10,6,30,6"
+                                                SnapsToDevicePixels="True">
                                             <Grid>
-                                                <ContentPresenter/>
-                                                <TextBlock x:Name="Arrow" Text="▼" FontSize="10"
+                                                <ContentPresenter x:Name="ContentSite"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                  ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                  ContentTemplateSelector="{Binding ItemTemplateSelector, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                  VerticalAlignment="Center"
+                                                                  HorizontalAlignment="Left"
+                                                                  IsHitTestVisible="False"/>
+                                                <TextBlock Text="▼" FontSize="10"
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                             </Grid>
@@ -205,20 +286,50 @@
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                             </ToggleButton>
-                            <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False"
-                                              Margin="10,8,30,8" VerticalAlignment="Center"/>
-                            <TextBox x:Name="PART_EditableTextBox" Visibility="Hidden" Margin="10,8,30,8"/>
-                            <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   AllowsTransparency="True" PopupAnimation="Slide">
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide">
                                 <Border Background="{StaticResource BgCardBrush}"
                                         BorderBrush="{StaticResource BorderSubtleBrush}"
-                                        BorderThickness="1" CornerRadius="6" Margin="0,4">
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Margin="0,4"
+                                        MinWidth="{TemplateBinding ActualWidth}">
                                     <ScrollViewer MaxHeight="200">
                                         <ItemsPresenter/>
                                     </ScrollViewer>
                                 </Border>
                             </Popup>
                         </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ====== ComboBoxItem ====== -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="4"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource BorderSubtleBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
