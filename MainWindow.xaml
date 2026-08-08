@@ -107,6 +107,7 @@
 
                     <!-- ===== 主控台页面 ===== -->
                     <StackPanel x:Name="PanelDashboard" Visibility="Visible">
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
@@ -149,7 +150,6 @@
                             </Grid>
                         </Border>
 
-                        <!-- 快速操作卡片 -->
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
@@ -177,7 +177,6 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 命令测试卡片 -->
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
@@ -207,6 +206,7 @@
 
                     <!-- ===== 设置页面 ===== -->
                     <StackPanel x:Name="PanelSettings" Visibility="Collapsed">
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
@@ -318,6 +318,7 @@
 
                     <!-- ===== 系统服务页面 ===== -->
                     <StackPanel x:Name="PanelService" Visibility="Collapsed">
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
@@ -392,6 +393,7 @@
 
                     <!-- ===== 运行日志页面 ===== -->
                     <StackPanel x:Name="PanelLogs" Visibility="Collapsed">
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
@@ -424,6 +426,7 @@
 
                     <!-- ===== 工具箱页面 ===== -->
                     <StackPanel x:Name="PanelToolbox" Visibility="Collapsed">
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
