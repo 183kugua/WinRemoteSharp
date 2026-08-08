@@ -3,136 +3,59 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Reflection;
-using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
 
 namespace WinRemoteSharp
 {
+    /// <summary>
+    /// 系统托盘管理器。
+    /// 关闭窗口后托盘继续运行，双击恢复窗口，右键菜单操作。
+    /// 运行在 WPF 主线程上（不需要独立线程）。
+    /// </summary>
     public class TrayManager : IDisposable
     {
         private readonly MainWindow _mainWindow;
-        private readonly Thread _trayThread;
-        private readonly ManualResetEventSlim _trayReady = new(false);
-        private System.Windows.Forms.NotifyIcon? _notifyIcon;
-        private System.Drawing.Bitmap? _trayIconBitmap;
-        private System.Drawing.Icon? _iconOnline;
-        private System.Drawing.Icon? _iconOffline;
+        private NotifyIcon? _notifyIcon;
+        private Icon? _iconOnline;
+        private Icon? _iconOffline;
         private bool _disposed;
 
         public TrayManager(MainWindow mainWindow)
         {
             _mainWindow = mainWindow;
-            _trayThread = new Thread(RunTrayMessageLoop)
-            {
-                Name = "TrayIconThread",
-                IsBackground = true,
-            };
-            _trayThread.SetApartmentState(ApartmentState.STA);
-            _trayThread.Start();
-            if (!_trayReady.Wait(TimeSpan.FromSeconds(5)))
-                Debug.WriteLine("[TrayManager] Timeout");
-        }
 
-        private void RunTrayMessageLoop()
-        {
             try
             {
-                System.Windows.Forms.Application.EnableVisualStyles();
-                System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
-                CreateTrayOnTrayThread();
-                _trayReady.Set();
-                System.Windows.Forms.Application.Run();
-            }
-            catch (Exception ex) { Debug.WriteLine($"[TrayManager] {ex}"); _trayReady.Set(); }
-        }
+                // 代码生成彩色盾牌图标（离线=灰色，在线=绿色）
+                _iconOnline = CreateShieldIcon("#FF00B894");
+                _iconOffline = CreateShieldIcon("#FF5A6280");
 
-        private void CreateTrayOnTrayThread()
-        {
-            try
-            {
-                _iconOnline = LoadTrayIcon("#FF00B894");
-                _iconOffline = LoadTrayIcon("#FF5A6280");
-                _notifyIcon = new System.Windows.Forms.NotifyIcon
+                var icon = _iconOffline ?? _iconOnline ?? SystemIcons.Application;
+
+                _notifyIcon = new NotifyIcon
                 {
-                    Icon = _iconOffline,
+                    Icon = icon,
                     Text = "WinRemote Agent — 未连接",
                     Visible = true
                 };
-                _notifyIcon.DoubleClick += (s, e) => ShowWindow();
+
+                _notifyIcon.DoubleClick += OnTrayDoubleClick;
                 _notifyIcon.ContextMenuStrip = BuildContextMenu();
-            }
-            catch (Exception ex) { Debug.WriteLine($"[TrayManager] Create: {ex}"); }
-        }
 
-        private System.Drawing.Icon LoadTrayIcon(string colorHex)
-        {
-            try
+                // 启动时显示气泡确认托盘工作正常
+                _notifyIcon.ShowBalloonTip(2000, "WinRemote Agent", "程序已启动，关闭窗口后将在后台运行",
+                    ToolTipIcon.Info);
+
+                LogToFile("[TrayManager] Created successfully on main thread");
+            }
+            catch (Exception ex)
             {
-                var c = ColorTranslator.FromHtml(colorHex);
-                _trayIconBitmap?.Dispose();
-                _trayIconBitmap = new System.Drawing.Bitmap(32, 32);
-                using (var g = System.Drawing.Graphics.FromImage(_trayIconBitmap))
-                {
-                    g.Clear(System.Drawing.Color.Transparent);
-                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    using (var brush = new System.Drawing.SolidBrush(c))
-                    {
-                        var pts = new System.Drawing.Point[] { new(4,3), new(28,3), new(28,14), new(16,29), new(4,14) };
-                        g.FillPolygon(brush, pts);
-                    }
-                    using (var pen = new System.Drawing.Pen(System.Drawing.Color.White, 2f))
-                    {
-                        g.DrawLine(pen, 8, 9, 11, 19);
-                        g.DrawLine(pen, 11, 19, 14, 13);
-                        g.DrawLine(pen, 14, 13, 16, 21);
-                        g.DrawLine(pen, 16, 21, 18, 13);
-                        g.DrawLine(pen, 18, 13, 21, 19);
-                        g.DrawLine(pen, 21, 19, 24, 9);
-                    }
-                }
-                return System.Drawing.Icon.FromHandle(_trayIconBitmap.GetHicon());
+                LogToFile($"[TrayManager] Constructor FAILED: {ex}");
             }
-            catch { return System.Drawing.SystemIcons.Application; }
         }
 
-        private System.Windows.Forms.ContextMenuStrip BuildContextMenu()
-        {
-            var menu = new System.Windows.Forms.ContextMenuStrip();
-            menu.Renderer = new DarkMenuRenderer();
-            menu.Items.Add("📋 显示窗口", null, (s, e) => ShowWindow());
-            menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-            menu.Items.Add("🔗 连接服务器", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayConnect()));
-            menu.Items.Add("⛓️‍💥 断开连接", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayDisconnect()));
-            menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-            var svc = new System.Windows.Forms.ToolStripMenuItem("⚙️ 服务管理");
-            svc.DropDownItems.Add("安装服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayInstallService()));
-            svc.DropDownItems.Add("卸载服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayUninstallService()));
-            svc.DropDownItems.Add(new System.Windows.Forms.ToolStripSeparator());
-            svc.DropDownItems.Add("启动服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayStartService()));
-            svc.DropDownItems.Add("停止服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayStopService()));
-            menu.Items.Add(svc);
-            menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-            var autoItem = new System.Windows.Forms.ToolStripMenuItem("🚀 开机自启");
-            autoItem.CheckOnClick = true;
-            autoItem.Checked = IsAutoStartEnabled();
-            autoItem.Click += (s, e) => ToggleAutoStart(autoItem);
-            menu.Items.Add(autoItem);
-            menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-            menu.Items.Add("📁 日志目录", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayOpenLogDir()));
-            menu.Items.Add("ℹ️ 关于", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayCheckUpdate()));
-            menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-            menu.Items.Add("❌ 退出程序", null, (s, e) => ExitApplication());
-            return menu;
-        }
-
-        private void InvokeOnMain(Action action)
-        {
-            try { _mainWindow.Dispatcher.Invoke(action); } catch { }
-        }
-
-        private void ShowWindow()
+        private void OnTrayDoubleClick(object? sender, EventArgs e)
         {
             try
             {
@@ -143,49 +66,163 @@ namespace WinRemoteSharp
                     _mainWindow.Activate();
                 });
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogToFile($"[TrayManager] ShowWindow FAILED: {ex}");
+            }
         }
 
-        public void ShowBalloonTip(string title, string message, System.Windows.Forms.ToolTipIcon icon = System.Windows.Forms.ToolTipIcon.Info)
+        public void ShowBalloonTip(string title, string message, ToolTipIcon icon = ToolTipIcon.Info)
         {
-            try { _notifyIcon?.ShowBalloonTip(3000, title, message, icon); } catch { }
+            try { _notifyIcon?.ShowBalloonTip(3000, title, message, icon); }
+            catch (Exception ex) { LogToFile($"[TrayManager] BalloonTip FAILED: {ex}"); }
         }
 
         public void UpdateConnectionStatus(bool connected)
         {
             try
             {
-                if (_notifyIcon != null)
+                if (_notifyIcon == null) return;
+                if (connected && _iconOnline != null)
                 {
-                    _notifyIcon.Icon = connected ? _iconOnline : _iconOffline;
-                    _notifyIcon.Text = connected ? "WinRemote Agent — 已连接" : "WinRemote Agent — 未连接";
+                    _notifyIcon.Icon = _iconOnline;
+                    _notifyIcon.Text = "WinRemote Agent — 已连接";
+                }
+                else if (_iconOffline != null)
+                {
+                    _notifyIcon.Icon = _iconOffline;
+                    _notifyIcon.Text = "WinRemote Agent — 未连接";
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogToFile($"[TrayManager] UpdateStatus FAILED: {ex}");
+            }
         }
+
+        // ===== 图标生成 =====
+
+        private Icon? CreateShieldIcon(string colorHex)
+        {
+            try
+            {
+                var c = ColorTranslator.FromHtml(colorHex);
+                using var bmp = new Bitmap(32, 32);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.Clear(Color.Transparent);
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+                    using var brush = new SolidBrush(c);
+                    var pts = new Point[] {
+                        new(4, 3), new(28, 3), new(28, 14),
+                        new(16, 29), new(4, 14)
+                    };
+                    g.FillPolygon(brush, pts);
+
+                    using var pen = new Pen(Color.White, 2f);
+                    g.DrawLine(pen, 8, 9, 11, 19);
+                    g.DrawLine(pen, 11, 19, 14, 13);
+                    g.DrawLine(pen, 14, 13, 16, 21);
+                    g.DrawLine(pen, 16, 21, 18, 13);
+                    g.DrawLine(pen, 18, 13, 21, 19);
+                    g.DrawLine(pen, 21, 19, 24, 9);
+                }
+
+                return Icon.FromHandle(bmp.GetHicon());
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"[TrayManager] CreateShieldIcon FAILED: {ex}");
+                return null;
+            }
+        }
+
+        // ===== 右键菜单 =====
+
+        private ContextMenuStrip BuildContextMenu()
+        {
+            var menu = new ContextMenuStrip();
+            menu.Renderer = new DarkMenuRenderer();
+
+            var showItem = menu.Items.Add("📋 显示窗口");
+            showItem.Click += (s, e) => OnTrayDoubleClick(null, EventArgs.Empty);
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            var connItem = menu.Items.Add("🔗 连接服务器");
+            connItem.Click += (s, e) => InvokeOnMain(() => _mainWindow.TrayConnect());
+
+            var discItem = menu.Items.Add("⛓️ 断开连接");
+            discItem.Click += (s, e) => InvokeOnMain(() => _mainWindow.TrayDisconnect());
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            var svcMenu = new ToolStripMenuItem("⚙️ 服务管理");
+            svcMenu.DropDownItems.Add("安装服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayInstallService()));
+            svcMenu.DropDownItems.Add("卸载服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayUninstallService()));
+            svcMenu.DropDownItems.Add(new ToolStripSeparator());
+            svcMenu.DropDownItems.Add("启动服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayStartService()));
+            svcMenu.DropDownItems.Add("停止服务", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayStopService()));
+            menu.Items.Add(svcMenu);
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            var autoItem = new ToolStripMenuItem("🚀 开机自启");
+            autoItem.CheckOnClick = true;
+            autoItem.Checked = IsAutoStartEnabled();
+            autoItem.Click += (s, e) => ToggleAutoStart(autoItem);
+            menu.Items.Add(autoItem);
+
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("📁 日志目录", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayOpenLogDir()));
+            menu.Items.Add("ℹ️ 关于", null, (s, e) => InvokeOnMain(() => _mainWindow.TrayCheckUpdate()));
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("❌ 退出程序", null, (s, e) => ExitApplication());
+
+            return menu;
+        }
+
+        private void InvokeOnMain(Action action)
+        {
+            try { _mainWindow.Dispatcher.Invoke(action); }
+            catch (Exception ex) { LogToFile($"[TrayManager] Invoke FAILED: {ex}"); }
+        }
+
+        // ===== 开机自启 =====
 
         private bool IsAutoStartEnabled()
         {
             try
             {
-                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Run", false);
                 return key?.GetValue("WinRemoteAgent") != null;
             }
             catch { return false; }
         }
 
-        private void ToggleAutoStart(System.Windows.Forms.ToolStripMenuItem item)
+        private void ToggleAutoStart(ToolStripMenuItem item)
         {
             try
             {
                 string? exePath = Process.GetCurrentProcess().MainModule?.FileName;
                 if (string.IsNullOrEmpty(exePath)) return;
-                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
-                if (item.Checked) key?.SetValue("WinRemoteAgent", $"\"{exePath}\" --hide");
-                else key?.DeleteValue("WinRemoteAgent", false);
+
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Run", true);
+                if (item.Checked)
+                    key?.SetValue("WinRemoteAgent", $"\"{exePath}\" --hide");
+                else
+                    key?.DeleteValue("WinRemoteAgent", false);
+
                 InvokeOnMain(() => _mainWindow.AddLog($"开机自启已{(item.Checked ? "启用" : "禁用")}"));
             }
-            catch (Exception ex) { item.Checked = !item.Checked; InvokeOnMain(() => _mainWindow.AddLog($"开机自启设置失败: {ex.Message}")); }
+            catch (Exception ex)
+            {
+                item.Checked = !item.Checked;
+                LogToFile($"[TrayManager] AutoStart FAILED: {ex}");
+            }
         }
 
         private void ExitApplication()
@@ -198,37 +235,67 @@ namespace WinRemoteSharp
                     ((App)System.Windows.Application.Current).ShutdownApp();
                 });
             }
-            catch { Environment.Exit(0); }
+            catch
+            {
+                Environment.Exit(0);
+            }
         }
+
+        // ===== 错误日志 =====
+
+        private static void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tray_error.log");
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}\n");
+            }
+            catch { }
+        }
+
+        // ===== Dispose =====
 
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
-            if (_notifyIcon != null) { try { _notifyIcon.Visible = false; _notifyIcon.Dispose(); _notifyIcon = null; } catch { } }
-            try { System.Windows.Forms.Application.Exit(); } catch { }
-            if (_trayThread.IsAlive) _trayThread.Join(TimeSpan.FromSeconds(3));
-            _trayIconBitmap?.Dispose();
-            _trayReady.Dispose();
+
+            if (_notifyIcon != null)
+            {
+                try
+                {
+                    _notifyIcon.Visible = false;
+                    _notifyIcon.Dispose();
+                    _notifyIcon = null;
+                }
+                catch { }
+            }
+
+            _iconOnline?.Dispose();
+            _iconOffline?.Dispose();
         }
     }
 
-    internal class DarkMenuRenderer : System.Windows.Forms.ToolStripProfessionalRenderer
+    /// <summary>
+    /// 托盘右键菜单的暗色渲染器
+    /// </summary>
+    internal class DarkMenuRenderer : ToolStripProfessionalRenderer
     {
         public DarkMenuRenderer() : base(new DarkColorTable()) { }
+
         private class DarkColorTable : System.Windows.Forms.ProfessionalColorTable
         {
-            public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(91, 94, 166);
-            public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(91, 94, 166);
-            public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(72, 75, 138);
-            public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(30, 35, 55);
-            public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(30, 35, 55);
-            public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(30, 35, 55);
-            public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(30, 35, 55);
-            public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(45, 50, 70);
-            public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(45, 50, 70);
-            public override System.Drawing.Color SeparatorDark => System.Drawing.Color.FromArgb(45, 50, 70);
-            public override System.Drawing.Color SeparatorLight => System.Drawing.Color.FromArgb(45, 50, 70);
+            public override Color MenuItemBorder => Color.FromArgb(45, 50, 70);
+            public override Color MenuItemSelected => Color.FromArgb(91, 94, 166);
+            public override Color MenuItemSelectedGradientBegin => Color.FromArgb(91, 94, 166);
+            public override Color MenuItemSelectedGradientEnd => Color.FromArgb(72, 75, 138);
+            public override Color ToolStripDropDownBackground => Color.FromArgb(30, 35, 55);
+            public override Color ImageMarginGradientBegin => Color.FromArgb(30, 35, 55);
+            public override Color ImageMarginGradientMiddle => Color.FromArgb(30, 35, 55);
+            public override Color ImageMarginGradientEnd => Color.FromArgb(30, 35, 55);
+            public override Color MenuBorder => Color.FromArgb(45, 50, 70);
+            public override Color SeparatorDark => Color.FromArgb(45, 50, 70);
+            public override Color SeparatorLight => Color.FromArgb(45, 50, 70);
         }
     }
 }
