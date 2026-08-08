@@ -108,10 +108,24 @@
 
                     <!-- ===== 主控台页面 ===== -->
                     <StackPanel x:Name="PanelDashboard" Visibility="Visible">
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard Storyboard="{StaticResource PageEnterAnimation}"/>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+
                         <!-- 服务器连接卡片 -->
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -155,6 +169,14 @@
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="快速操作" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -174,7 +196,7 @@
                                     <Button Content="读文件" Style="{StaticResource SecondaryButton}"
                                             Click="BtnReadFile_Click" Width="100" Margin="0,0,8,8"/>
                                     <Button Content="写文件" Style="{StaticResource SecondaryButton}"
-                                            Click="BtnWriteFile_Click" Width="100"/>
+                                            Click="BtnWriteFile_Click" Width="100" Margin="0,0,8,8"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -183,6 +205,14 @@
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="命令测试" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -209,9 +239,23 @@
 
                     <!-- ===== 设置页面 ===== -->
                     <StackPanel x:Name="PanelSettings" Visibility="Collapsed">
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard Storyboard="{StaticResource PageEnterAnimation}"/>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="安全设置" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -226,6 +270,14 @@
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="白名单 &amp; 黑名单" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -243,6 +295,14 @@
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="高级选项" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -276,7 +336,7 @@
                                 <Grid Margin="0,4">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="140"/>
-                                        <ColumnDefinition Width="*"/>
+n                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="截图质量 (1-100)" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
@@ -320,9 +380,23 @@
 
                     <!-- ===== 系统服务页面 ===== -->
                     <StackPanel x:Name="PanelService" Visibility="Collapsed">
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard Storyboard="{StaticResource PageEnterAnimation}"/>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="服务状态" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -346,6 +420,14 @@
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20" Margin="0,0,0,16"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="服务操作" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -369,6 +451,14 @@
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <Grid>
                                     <TextBlock Text="服务日志" FontWeight="SemiBold" FontSize="14"
@@ -394,9 +484,23 @@
 
                     <!-- ===== 运行日志页面 ===== -->
                     <StackPanel x:Name="PanelLogs" Visibility="Collapsed">
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard Storyboard="{StaticResource PageEnterAnimation}"/>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -426,9 +530,23 @@
 
                     <!-- ===== 工具箱页面 ===== -->
                     <StackPanel x:Name="PanelToolbox" Visibility="Collapsed">
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard Storyboard="{StaticResource PageEnterAnimation}"/>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+
                         <Border Background="{StaticResource BgCardBrush}"
                                 CornerRadius="10" Padding="20"
                                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Border.RenderTransform>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource CardEnterAnimation}"/>
+                                </EventTrigger>
+                            </Border.Triggers>
                             <StackPanel>
                                 <TextBlock Text="系统信息" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
