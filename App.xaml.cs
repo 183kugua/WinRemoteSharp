@@ -33,6 +33,9 @@ namespace WinRemoteSharp
                 return;
             }
 
+            // 关键：设为 OnExplicitShutdown，关闭窗口不会退出程序，托盘继续运行
+            this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             base.OnStartup(e);
 
             if (this.MainWindow is MainWindow mw)
@@ -44,9 +47,7 @@ namespace WinRemoteSharp
                 }
                 catch (Exception ex) { Log(ex); }
 
-                if (hideWindow)
-                    mw.Hide();
-                else
+                if (!hideWindow)
                     mw.Show();
             }
         }
@@ -67,6 +68,12 @@ namespace WinRemoteSharp
         {
             _trayManager?.Dispose();
             base.OnExit(e);
+        }
+
+        public void ShutdownApp()
+        {
+            _trayManager?.Dispose();
+            this.Shutdown();
         }
     }
 }
