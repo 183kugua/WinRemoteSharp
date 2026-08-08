@@ -7,6 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>WinRemoteSharp</RootNamespace>
     <AssemblyName>WinRemoteAgent</AssemblyName>
+    <ApplicationIcon>Resources\App.ico</ApplicationIcon>
 
     <!-- Single-file self-contained publish -->
     <PublishSingleFile>true</PublishSingleFile>
@@ -28,14 +29,6 @@
     <AssemblyVersion>1.2.0.0</AssemblyVersion>
     <FileVersion>1.2.0.0</FileVersion>
   </PropertyGroup>
-
-  <!--
-    IMPORTANT: SDK-style projects auto-include **\*.cs and **\*.xaml.
-    We disable that and list files explicitly to avoid NETSDK1022 duplicates.
-    No NuGet packages needed - using only BCL + WPF built-in types.
-    System.Drawing.Common is NOT used (it requires separate NuGet install on .NET 6+).
-    Screenshots use WPF's RenderTargetBitmap + JpegBitmapEncoder (built-in).
-  -->
 
   <PropertyGroup>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -81,24 +74,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Resources -->
-    <Resource Include="Resources\DialogIcon.png" />
+    <!-- 窗口图标使用 WPF Resource -->
     <Resource Include="Resources\App.ico" />
+    <!-- 托盘图标使用 EmbeddedResource -->
+    <EmbeddedResource Include="Resources\DialogIcon.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- System.Drawing.Common for .NET 8 (required for Icon, Bitmap, etc.) -->
+    <!-- System.Drawing.Common for .NET 8 -->
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
-
-  <!--
-    WinForms support enabled via <UseWindowsForms>true</UseWindowsForms>
-    No separate PackageReference needed for System.Windows.Forms
-    All functionality uses .NET 8 BCL + WPF built-in assemblies:
-    - System.Net.WebSockets.ClientWebSocket (BCL)
-    - System.Text.Json (BCL, part of net8.0)
-    - System.Windows.Media.Imaging (WPF)
-    - System.Windows.Forms.NotifyIcon (WinForms interop, built-in)
-  -->
 
 </Project>
