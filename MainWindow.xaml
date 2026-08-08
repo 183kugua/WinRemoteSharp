@@ -72,13 +72,14 @@
         <!-- ====== 右侧内容区 ====== -->
         <Border Grid.Column="1" Background="{StaticResource BgDarkBrush}">
             <Grid>
-                <!-- 隐藏的旧 TabControl，保留以便 .cs 引用兼容 -->
-                <TabControl x:Name="MainTabControl" Visibility="Collapsed"/>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
+
+                <!-- 隐藏的旧 TabControl，保留以便 .cs 引用兼容 -->
+                <TabControl x:Name="MainTabControl" Visibility="Collapsed"/>
 
                 <!-- 页面标题栏 -->
                 <Border Grid.Row="0" Padding="24,16" Background="{StaticResource BgDarkBrush}">
