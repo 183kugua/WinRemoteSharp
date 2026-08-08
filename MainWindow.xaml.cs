@@ -57,6 +57,8 @@ namespace WinRemoteSharp
             }
         }
 
+        // ===== 侧边栏导航 =====
+
         private void NavDashboard_Click(object sender, RoutedEventArgs e) => SetNavActive(NavDashboard, "📊 主控台");
         private void NavSettings_Click(object sender, RoutedEventArgs e) => SetNavActive(NavSettings, "⚙️ 设置");
         private void NavService_Click(object sender, RoutedEventArgs e) => SetNavActive(NavService, "🔧 系统服务");
@@ -89,6 +91,8 @@ namespace WinRemoteSharp
             PanelToolbox.Visibility   = activeBtn == NavToolbox   ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        // ===== 日志 =====
+
         public void AddLog(string msg)
         {
             string line = $"[{DateTime.Now:HH:mm:ss}] {msg}";
@@ -108,6 +112,8 @@ namespace WinRemoteSharp
             StatusText.Text = connected ? "已连接" : "未连接";
             _trayMgr?.UpdateConnectionStatus(connected);
         }
+
+        // ===== 连接 =====
 
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
@@ -141,6 +147,8 @@ namespace WinRemoteSharp
         {
             if (_agent != null) { await _agent.DisconnectAsync(); _agent = null; AddLog("已停止"); }
         }
+
+        // ===== 工具箱操作 =====
 
         private void BtnShell_Click(object sender, RoutedEventArgs e) => AskAndRun("CMD 命令", "cmd");
         private void BtnPowershell_Click(object sender, RoutedEventArgs e) => AskAndRun("PowerShell 命令", "powershell");
@@ -260,6 +268,8 @@ namespace WinRemoteSharp
 
         private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtFullLog.Clear();
 
+        // ===== 设置 =====
+
         private void LoadSettingsToUI()
         {
             var c = _config;
@@ -310,6 +320,8 @@ namespace WinRemoteSharp
             AddLog("✅ 配置已保存");
         }
 
+        // ===== 系统服务 =====
+
         private void RefreshServiceStatus()
         {
             if (_svcMgr == null) return;
@@ -331,6 +343,8 @@ namespace WinRemoteSharp
         private void BtnClearServiceLog_Click(object s, RoutedEventArgs e) => TxtServiceLog.Clear();
         private void BtnRefreshLog_Click(object s, RoutedEventArgs e) => TxtFullLog.ScrollToEnd();
 
+        // ===== 系统信息 =====
+
         private void RefreshSystemInfo()
         {
             TxtHostname.Text = Environment.MachineName;
@@ -338,6 +352,8 @@ namespace WinRemoteSharp
             TxtUsername.Text = Environment.UserName;
             TxtDotNetVer.Text = Environment.Version.ToString();
         }
+
+        // ===== 托盘接口 =====
 
         public void TrayConnect() => Dispatcher.Invoke(() => BtnConnect_Click(null, null));
         public void TrayDisconnect() => Dispatcher.Invoke(() => BtnDisconnect_Click(null, null));
@@ -354,6 +370,8 @@ namespace WinRemoteSharp
             if (!Directory.Exists(d)) Directory.CreateDirectory(d);
             Process.Start("explorer.exe", d);
         });
+
+        // ===== 工具方法 =====
 
         private static int Int(string s, int def) => int.TryParse(s, out int v) ? v : def;
         private static void SafeSet(System.Windows.Controls.TextBox tb, string v) { if (tb != null) tb.Text = v; }
