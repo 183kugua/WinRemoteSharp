@@ -104,6 +104,7 @@
 
                 <!-- 内容滚动区 -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,16">
+                    <StackPanel>
 
                     <!-- ===== 主控台页面 ===== -->
                     <StackPanel x:Name="PanelDashboard" Visibility="Visible">
@@ -469,6 +470,7 @@
                                 </Grid>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
 
