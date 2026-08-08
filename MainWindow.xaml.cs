@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using WinRemoteSharp.Core;
 
@@ -56,17 +55,16 @@ namespace WinRemoteSharp
             }
         }
 
-        // ===== 侧边栏导航 =====
-
         private void NavDashboard_Click(object sender, RoutedEventArgs e) => SetNavActive(NavDashboard, "📊 主控台");
         private void NavSettings_Click(object sender, RoutedEventArgs e) => SetNavActive(NavSettings, "⚙️ 设置");
         private void NavService_Click(object sender, RoutedEventArgs e) => SetNavActive(NavService, "🔧 系统服务");
         private void NavLogs_Click(object sender, RoutedEventArgs e) => SetNavActive(NavLogs, "📋 运行日志");
         private void NavToolbox_Click(object sender, RoutedEventArgs e) => SetNavActive(NavToolbox, "🛠️ 工具箱");
 
-        private void SetNavActive(Button activeBtn, string title)
+        private void SetNavActive(System.Windows.Controls.Button activeBtn, string title)
         {
             PageTitle.Text = title;
+
             var allBtns = new[] { NavDashboard, NavSettings, NavService, NavLogs, NavToolbox };
             foreach (var b in allBtns)
             {
@@ -81,14 +79,13 @@ namespace WinRemoteSharp
                     b.Foreground = (SolidColorBrush)FindResource("TextSecondaryBrush");
                 }
             }
+
             PanelDashboard.Visibility = activeBtn == NavDashboard ? Visibility.Visible : Visibility.Collapsed;
             PanelSettings.Visibility  = activeBtn == NavSettings  ? Visibility.Visible : Visibility.Collapsed;
             PanelService.Visibility   = activeBtn == NavService   ? Visibility.Visible : Visibility.Collapsed;
             PanelLogs.Visibility      = activeBtn == NavLogs      ? Visibility.Visible : Visibility.Collapsed;
             PanelToolbox.Visibility   = activeBtn == NavToolbox   ? Visibility.Visible : Visibility.Collapsed;
         }
-
-        // ===== 日志 =====
 
         public void AddLog(string msg)
         {
@@ -109,8 +106,6 @@ namespace WinRemoteSharp
             StatusText.Text = connected ? "已连接" : "未连接";
             _trayMgr?.UpdateConnectionStatus(connected);
         }
-
-        // ===== 连接 =====
 
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
@@ -144,8 +139,6 @@ namespace WinRemoteSharp
         {
             if (_agent != null) { await _agent.DisconnectAsync(); _agent = null; AddLog("已停止"); }
         }
-
-        // ===== 工具箱操作 =====
 
         private void BtnShell_Click(object sender, RoutedEventArgs e) => AskAndRun("CMD 命令", "cmd");
         private void BtnPowershell_Click(object sender, RoutedEventArgs e) => AskAndRun("PowerShell 命令", "powershell");
@@ -265,8 +258,6 @@ namespace WinRemoteSharp
 
         private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtFullLog.Clear();
 
-        // ===== 设置 =====
-
         private void LoadSettingsToUI()
         {
             var c = _config;
@@ -317,8 +308,6 @@ namespace WinRemoteSharp
             AddLog("✅ 配置已保存");
         }
 
-        // ===== 系统服务 =====
-
         private void RefreshServiceStatus()
         {
             if (_svcMgr == null) return;
@@ -340,8 +329,6 @@ namespace WinRemoteSharp
         private void BtnClearServiceLog_Click(object s, RoutedEventArgs e) => TxtServiceLog.Clear();
         private void BtnRefreshLog_Click(object s, RoutedEventArgs e) => TxtFullLog.ScrollToEnd();
 
-        // ===== 系统信息 =====
-
         private void RefreshSystemInfo()
         {
             TxtHostname.Text = Environment.MachineName;
@@ -349,8 +336,6 @@ namespace WinRemoteSharp
             TxtUsername.Text = Environment.UserName;
             TxtDotNetVer.Text = Environment.Version.ToString();
         }
-
-        // ===== 托盘接口 =====
 
         public void TrayConnect() => Dispatcher.Invoke(() => BtnConnect_Click(null, null));
         public void TrayDisconnect() => Dispatcher.Invoke(() => BtnDisconnect_Click(null, null));
