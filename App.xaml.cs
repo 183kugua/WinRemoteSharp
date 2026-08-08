@@ -42,17 +42,41 @@ namespace WinRemoteSharp
             {
                 try
                 {
+                    // 在窗口 Show 之前创建托盘，确保两者同时出现
                     _trayManager = new TrayManager(mw);
                     mw.SetTrayManager(_trayManager);
+                    Log("TrayManager created successfully");
                 }
-                catch (Exception ex) { Log(ex); }
+                catch (Exception ex)
+                {
+                    Log(ex);
+                    Log($"TrayManager creation failed: {ex}");
+                }
 
                 if (!hideWindow)
+                {
                     mw.Show();
+                    Log("MainWindow shown");
+                }
+            }
+            else
+            {
+                Log("MainWindow is null after base.OnStartup");
             }
         }
 
-        private void Log(Exception ex)
+        private static void Log(string msg)
+        {
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_log.log"),
+                    $"[{DateTime.Now:HH:mm:ss}] {msg}\n");
+            }
+            catch { }
+        }
+
+        private static void Log(Exception ex)
         {
             if (ex == null) return;
             try
@@ -70,6 +94,9 @@ namespace WinRemoteSharp
             base.OnExit(e);
         }
 
+        /// <summary>
+        /// 由 MainWindow 或 TrayManager 调用以真正退出程序
+        /// </summary>
         public void ShutdownApp()
         {
             _trayManager?.Dispose();
