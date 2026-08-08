@@ -114,9 +114,9 @@ namespace WinRemoteSharp
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
                     using var brush = new SolidBrush(c);
-                    var pts = new Point[] {
-                        new(4, 3), new(28, 3), new(28, 14),
-                        new(16, 29), new(4, 14)
+                    var pts = new System.Drawing.Point[] {
+                        new System.Drawing.Point(4, 3), new System.Drawing.Point(28, 3), new System.Drawing.Point(28, 14),
+                        new System.Drawing.Point(16, 29), new System.Drawing.Point(4, 14)
                     };
                     g.FillPolygon(brush, pts);
 
