@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using WinRemoteSharp.Core;
 
@@ -36,15 +37,8 @@ namespace WinRemoteSharp
             LoadSettingsToUI();
             RefreshSystemInfo();
             RefreshServiceStatus();
-            AddLog("WinRemote Agent V1.2 已就绪");
-
-            string url = TxtServerUrl.Text.Trim();
-            if (!string.IsNullOrEmpty(url) && url.StartsWith("ws"))
-            {
-                AddLog("正在自动连接服务器...");
-                Dispatcher.BeginInvoke(new Action(() => BtnConnect_Click(null, null)),
-                    System.Windows.Threading.DispatcherPriority.Background);
-            }
+            AddLog("WinRemote Agent V1.2 已就绪 — 关闭窗口后托盘继续运行");
+            SetNavActive(NavDashboard, "📊 主控台");
         }
 
         private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -53,7 +47,7 @@ namespace WinRemoteSharp
             {
                 e.Cancel = true;
                 Hide();
-                _trayMgr?.ShowBalloonTip("WinRemote Agent", "已最小化到托盘，右键退出");
+                _trayMgr?.ShowBalloonTip("WinRemote Agent", "程序在后台运行中\n双击托盘图标恢复窗口");
             }
             else
             {
@@ -62,13 +56,46 @@ namespace WinRemoteSharp
             }
         }
 
+        // ===== 侧边栏导航 =====
+
+        private void NavDashboard_Click(object sender, RoutedEventArgs e) => SetNavActive(NavDashboard, "📊 主控台");
+        private void NavSettings_Click(object sender, RoutedEventArgs e) => SetNavActive(NavSettings, "⚙️ 设置");
+        private void NavService_Click(object sender, RoutedEventArgs e) => SetNavActive(NavService, "🔧 系统服务");
+        private void NavLogs_Click(object sender, RoutedEventArgs e) => SetNavActive(NavLogs, "📋 运行日志");
+        private void NavToolbox_Click(object sender, RoutedEventArgs e) => SetNavActive(NavToolbox, "🛠️ 工具箱");
+
+        private void SetNavActive(Button activeBtn, string title)
+        {
+            PageTitle.Text = title;
+            var allBtns = new[] { NavDashboard, NavSettings, NavService, NavLogs, NavToolbox };
+            foreach (var b in allBtns)
+            {
+                if (b == activeBtn)
+                {
+                    b.Background = new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#10FFFFFF"));
+                    b.Foreground = (SolidColorBrush)FindResource("TextPrimaryBrush");
+                }
+                else
+                {
+                    b.Background = Brushes.Transparent;
+                    b.Foreground = (SolidColorBrush)FindResource("TextSecondaryBrush");
+                }
+            }
+            PanelDashboard.Visibility = activeBtn == NavDashboard ? Visibility.Visible : Visibility.Collapsed;
+            PanelSettings.Visibility  = activeBtn == NavSettings  ? Visibility.Visible : Visibility.Collapsed;
+            PanelService.Visibility   = activeBtn == NavService   ? Visibility.Visible : Visibility.Collapsed;
+            PanelLogs.Visibility      = activeBtn == NavLogs      ? Visibility.Visible : Visibility.Collapsed;
+            PanelToolbox.Visibility   = activeBtn == NavToolbox   ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ===== 日志 =====
+
         public void AddLog(string msg)
         {
             string line = $"[{DateTime.Now:HH:mm:ss}] {msg}";
             Dispatcher.Invoke(() =>
             {
-                TxtLog.AppendText(line + Environment.NewLine);
-                TxtLog.ScrollToEnd();
+                TxtLog.Text = line;
                 TxtFullLog.AppendText(line + Environment.NewLine);
                 TxtFullLog.ScrollToEnd();
             });
@@ -76,10 +103,14 @@ namespace WinRemoteSharp
 
         private void UpdateStatusDot(bool connected)
         {
-            StatusDot.Fill = connected ? new SolidColorBrush(Colors.LimeGreen) : new SolidColorBrush(Colors.Red);
-            StatusText.Text = connected ? "已连接" : "Agent 已停止";
+            StatusDot.Fill = connected
+                ? new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF00B894"))
+                : new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF5A6280"));
+            StatusText.Text = connected ? "已连接" : "未连接";
             _trayMgr?.UpdateConnectionStatus(connected);
         }
+
+        // ===== 连接 =====
 
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
@@ -113,6 +144,8 @@ namespace WinRemoteSharp
         {
             if (_agent != null) { await _agent.DisconnectAsync(); _agent = null; AddLog("已停止"); }
         }
+
+        // ===== 工具箱操作 =====
 
         private void BtnShell_Click(object sender, RoutedEventArgs e) => AskAndRun("CMD 命令", "cmd");
         private void BtnPowershell_Click(object sender, RoutedEventArgs e) => AskAndRun("PowerShell 命令", "powershell");
@@ -149,7 +182,7 @@ namespace WinRemoteSharp
                 if (await Task.WhenAny(t, Task.Delay(30000)) == t)
                     TxtTestResult.Text = string.IsNullOrEmpty(t.Result[1]) ? t.Result[0] : t.Result[0] + "\n[stderr] " + t.Result[1];
                 else { try { p.Kill(); } catch { } TxtTestResult.Text = "[超时]"; }
-                AddLog("完成");
+                AddLog("命令执行完成");
             }
             catch (Exception ex) { TxtTestResult.Text = ex.Message; }
         }
@@ -218,9 +251,9 @@ namespace WinRemoteSharp
             {
                 using var ws = new System.Net.WebSockets.ClientWebSocket();
                 await ws.ConnectAsync(new Uri(url), new System.Threading.CancellationTokenSource(5000).Token);
-                AddLog("服务器可达");
+                AddLog("✅ 服务器可达");
             }
-            catch (Exception ex) { AddLog($"失败: {ex.Message}"); }
+            catch (Exception ex) { AddLog($"❌ 连接失败: {ex.Message}"); }
         }
 
         private void BtnRunTestCommand_Click(object sender, RoutedEventArgs e)
@@ -230,7 +263,9 @@ namespace WinRemoteSharp
             _ = RunCmdAsync(cmd, "cmd");
         }
 
-        private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtLog.Clear();
+        private void BtnClearLog_Click(object sender, RoutedEventArgs e) => TxtFullLog.Clear();
+
+        // ===== 设置 =====
 
         private void LoadSettingsToUI()
         {
@@ -279,16 +314,20 @@ namespace WinRemoteSharp
         {
             SyncUIToConfig();
             Core.ConfigManager.Save(_config);
-            AddLog("已保存");
+            AddLog("✅ 配置已保存");
         }
+
+        // ===== 系统服务 =====
 
         private void RefreshServiceStatus()
         {
             if (_svcMgr == null) return;
             var (r, s) = _svcMgr.GetServiceState();
             ServiceStatusText.Text = s;
-            ServiceDot.Fill = r ? new SolidColorBrush(Colors.LimeGreen) : new SolidColorBrush(Colors.Gray);
-            NssmStatusText.Text = _svcMgr.IsNssmAvailable() ? "已安装" : "未安装";
+            ServiceDot.Fill = r
+                ? new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF00B894"))
+                : new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF5A6280"));
+            NssmStatusText.Text = _svcMgr.IsNssmAvailable() ? "NSSM：已安装" : "NSSM：未安装";
         }
 
         private void BtnSvcInstall_Click(object s, RoutedEventArgs e) { AddLog(_svcMgr.Install()); RefreshServiceStatus(); }
@@ -301,6 +340,8 @@ namespace WinRemoteSharp
         private void BtnClearServiceLog_Click(object s, RoutedEventArgs e) => TxtServiceLog.Clear();
         private void BtnRefreshLog_Click(object s, RoutedEventArgs e) => TxtFullLog.ScrollToEnd();
 
+        // ===== 系统信息 =====
+
         private void RefreshSystemInfo()
         {
             TxtHostname.Text = Environment.MachineName;
@@ -309,6 +350,8 @@ namespace WinRemoteSharp
             TxtDotNetVer.Text = Environment.Version.ToString();
         }
 
+        // ===== 托盘接口 =====
+
         public void TrayConnect() => Dispatcher.Invoke(() => BtnConnect_Click(null, null));
         public void TrayDisconnect() => Dispatcher.Invoke(() => BtnDisconnect_Click(null, null));
         public void TrayInstallService() => Dispatcher.Invoke(() => BtnSvcInstall_Click(null, null));
@@ -316,7 +359,7 @@ namespace WinRemoteSharp
         public void TrayStartService() => Dispatcher.Invoke(() => BtnSvcStart_Click(null, null));
         public void TrayStopService() => Dispatcher.Invoke(() => BtnSvcStop_Click(null, null));
         public void TrayServiceStatus() => Dispatcher.Invoke(() => System.Windows.Forms.MessageBox.Show("请查看「系统服务」选项卡", "服务状态"));
-        public void TrayCheckUpdate() => Dispatcher.Invoke(() => System.Windows.Forms.MessageBox.Show("WinRemote Agent V1.2", "关于"));
+        public void TrayCheckUpdate() => Dispatcher.Invoke(() => System.Windows.Forms.MessageBox.Show("WinRemote Agent V1.2\n\n关闭窗口自动后台运行\n双击托盘图标恢复窗口", "关于"));
         public void TrayRefreshLogs() => Dispatcher.Invoke(() => TxtFullLog.ScrollToEnd());
         public void TrayOpenLogDir() => Dispatcher.Invoke(() =>
         {
