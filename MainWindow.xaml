@@ -60,7 +60,23 @@
                     <Grid>
                         <Ellipse x:Name="StatusDot" Width="8" Height="8"
                                  Fill="{StaticResource TextMutedBrush}"
-                                 HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                 HorizontalAlignment="Left" VerticalAlignment="Center"
+                                 RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             From="1.0" To="0.4" Duration="0:0:1.5">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseInOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
                         <TextBlock x:Name="StatusText" Text="未连接"
                                    FontSize="11" Foreground="{StaticResource TextMutedBrush}"
                                    Margin="16,0,0,0" VerticalAlignment="Center"/>
@@ -78,6 +94,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
+                <!-- 隐藏的旧 TabControl，保留以便 .cs 引用兼容 -->
                 <TabControl x:Name="MainTabControl" Visibility="Collapsed"/>
 
                 <!-- 页面标题栏 -->
@@ -107,9 +124,10 @@
 
                     <!-- ===== 主控台页面 ===== -->
                     <StackPanel x:Name="PanelDashboard" Visibility="Visible">
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20" Margin="0,0,0,16"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+
+                        <!-- 服务器连接卡片 -->
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20" Margin="0,0,0,16">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -150,9 +168,8 @@
                         </Border>
 
                         <!-- 快速操作卡片 -->
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20" Margin="0,0,0,16"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="快速操作" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -178,9 +195,8 @@
                         </Border>
 
                         <!-- 命令测试卡片 -->
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20">
                             <StackPanel>
                                 <TextBlock Text="命令测试" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -207,9 +223,9 @@
 
                     <!-- ===== 设置页面 ===== -->
                     <StackPanel x:Name="PanelSettings" Visibility="Collapsed">
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20" Margin="0,0,0,16"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="安全设置" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -221,9 +237,8 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20" Margin="0,0,0,16"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="白名单 &amp; 黑名单" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -238,9 +253,8 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20" Margin="0,0,0,16"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="高级选项" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -318,9 +332,9 @@
 
                     <!-- ===== 系统服务页面 ===== -->
                     <StackPanel x:Name="PanelService" Visibility="Collapsed">
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20" Margin="0,0,0,16"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="服务状态" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -341,9 +355,8 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20" Margin="0,0,0,16"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="服务操作" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
@@ -364,9 +377,8 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20">
                             <StackPanel>
                                 <Grid>
                                     <TextBlock Text="服务日志" FontWeight="SemiBold" FontSize="14"
@@ -392,9 +404,9 @@
 
                     <!-- ===== 运行日志页面 ===== -->
                     <StackPanel x:Name="PanelLogs" Visibility="Collapsed">
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -424,9 +436,9 @@
 
                     <!-- ===== 工具箱页面 ===== -->
                     <StackPanel x:Name="PanelToolbox" Visibility="Collapsed">
-                        <Border Background="{StaticResource BgCardBrush}"
-                                CornerRadius="10" Padding="20"
-                                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+
+                        <Border Style="{StaticResource CardBorder}"
+                                Padding="20">
                             <StackPanel>
                                 <TextBlock Text="系统信息" FontWeight="SemiBold" FontSize="14"
                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
